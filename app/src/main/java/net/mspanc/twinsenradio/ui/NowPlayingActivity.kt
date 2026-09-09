@@ -1,212 +1,358 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="?attr/colorPrimary">
+package net.mspanc.twinsenradio.ui
 
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
-        app:navigationIcon="@drawable/ic_arrow_back"
-        app:title="@string/now_playing_title"
-        app:titleTextColor="@color/on_brand">
+import android.content.ComponentName
+import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.google.common.util.concurrent.MoreExecutors
+import kotlinx.coroutines.launch
+import net.mspanc.twinsenradio.R
+import net.mspanc.twinsenradio.data.Prefs
+import net.mspanc.twinsenradio.data.Station
+import net.mspanc.twinsenradio.data.StationRepository
+import net.mspanc.twinsenradio.databinding.ActivityNowPlayingBinding
+import net.mspanc.twinsenradio.playback.MetadataFactory
+import net.mspanc.twinsenradio.playback.PlaybackStatusBus
+import net.mspanc.twinsenradio.playback.RadioService
+import net.mspanc.twinsenradio.playback.TextCase
 
-        <ImageButton
-            android:id="@+id/favourite"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_gravity="end"
-            android:layout_marginEnd="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/fav_add"
-            android:src="@drawable/ic_star_outline" />
+/**
+ * Full-screen player on the phone: large cover art, metadata, controls, and
+ * a back arrow to the station list. Opens by tapping the playback bar on the
+ * home screen.
+ */
+@UnstableApi
+class NowPlayingActivity : AppCompatActivity() {
 
-    </com.google.android.material.appbar.MaterialToolbar>
+    private lateinit var b: ActivityNowPlayingBinding
+    private lateinit var repo: StationRepository
+    private lateinit var metadata: MetadataFactory
+    private lateinit var prefs: Prefs
+    private var controller: MediaController? = null
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:background="?attr/colorSurface">
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-        <ImageView
-            android:id="@+id/art"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_marginHorizontal="32dp"
-            android:layout_marginTop="16dp"
-            android:layout_weight="1"
-            android:adjustViewBounds="true"
-            android:contentDescription="@null"
-            android:scaleType="fitCenter"
-            android:src="@drawable/logo_placeholder" />
+        b = ActivityNowPlayingBinding.inflate(layoutInflater)
+        setContentView(b.root)
 
-        <TextView
-            android:id="@+id/stationName"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="24dp"
-            android:layout_marginTop="12dp"
-            android:ellipsize="end"
-            android:gravity="center"
-            android:maxLines="1"
-            android:textAppearance="?attr/textAppearanceHeadlineMedium"
-            android:textStyle="bold" />
+        ViewCompat.setOnApplyWindowInsetsListener(b.root) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
 
-        <TextView
-            android:id="@+id/songTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="24dp"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:maxLines="2"
-            android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+            view.setPadding(
+                view.paddingLeft,
+                systemBars.top,
+                view.paddingRight,
+                maxOf(systemBars.bottom, ime.bottom)
+            )
 
-        <!--
-            Sam wykonawca. Jesli nie miesci sie na jednej linii, wolimy zmniejszyc
-            czcionke (autosize) niz zawijac - przy dwoch liniach nie byloby juz
-            widac, gdzie konczy sie wykonawca a zaczyna plyta na linii ponizej.
-        -->
-        <TextView
-            android:id="@+id/songArtist"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="4dp"
-            android:autoSizeMaxTextSize="18sp"
-            android:autoSizeMinTextSize="12sp"
-            android:autoSizeStepGranularity="1sp"
-            android:autoSizeTextType="uniform"
-            android:ellipsize="end"
-            android:gravity="center"
-            android:maxLines="1"
-            android:textAppearance="?attr/textAppearanceTitleMedium" />
+            insets
+        }
 
-        <!--
-            Plyta i rok zawsze pod wykonawca, na osobnej linii - w jednej linii ze
-            spojnikiem rok brzydko przeskakiwal sam do nowego wiersza przy dluzszych
-            nazwach. Na Android Auto nie ma tego problemu (jedno pole, bez zawijania),
-            wiec tam LineContent.ARTIST_ALBUM dalej sklejamy w jedna linie.
-        -->
-        <TextView
-            android:id="@+id/songAlbum"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="2dp"
-            android:ellipsize="end"
-            android:gravity="center"
-            android:maxLines="2"
-            android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:visibility="gone" />
+        repo = StationRepository.get(this)
+        prefs = Prefs(this)
+        metadata = MetadataFactory(this, prefs)
 
-        <TextView
-            android:id="@+id/status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:textAppearance="?attr/textAppearanceLabelMedium" />
+        b.toolbar.setNavigationOnClickListener { finish() }
 
-        <!--
-            Wybor jakosci wprost z ekranu odtwarzania - ta sama nastawa, co w karcie
-            stacji, wiec zmiana w jednym miejscu widac w drugim. Stukniecie otwiera
-            dialog z lista wariantow (StreamPicker), a nie rozwijana liste w miejscu -
-            przy dluzszych etykietach ta wygladala niechlujnie.
-        -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/bitrate"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp"
-            android:ellipsize="end"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:maxLines="1"
-            android:minWidth="0dp"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="2dp"
-            android:visibility="gone"
-            app:backgroundTint="?attr/colorSurfaceContainerLow"
-            app:cornerRadius="10dp"
-            app:icon="@drawable/ic_expand_more"
-            app:iconGravity="end"
-            app:iconPadding="2dp"
-            app:iconSize="14dp"
-            app:iconTint="?attr/colorOnSurfaceVariant" />
+        b.playPause.setOnClickListener {
+            val c = controller ?: return@setOnClickListener
+            if (c.isPlaying) c.pause() else c.play()
+        }
 
-        <LinearLayout
-            android:id="@+id/diagnosticBanner"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="24dp"
-            android:layout_marginTop="10dp"
-            android:orientation="vertical"
-            android:visibility="gone">
+        b.prev.setOnClickListener { step(-1) }
+        b.next.setOnClickListener { step(+1) }
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:letterSpacing="0.08"
-                android:text="@string/diagnostic_banner_line1"
-                android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="@color/diagnostic"
-                android:textStyle="bold" />
+        b.favourite.setOnClickListener {
+            val id = PlaybackStatusBus.stationId.value ?: return@setOnClickListener
+            prefs.toggleFavourite(id)
+            render()
+        }
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:text="@string/diagnostic_banner_line2"
-                android:textAppearance="?attr/textAppearanceBodySmall"
-                android:textColor="@color/diagnostic" />
+        listOf(
+            PlaybackStatusBus.stationId,
+            PlaybackStatusBus.nowPlaying,
+            PlaybackStatusBus.status,
+            PlaybackStatusBus.coverArtUrl,
+            PlaybackStatusBus.trackInfo,
+            PlaybackStatusBus.quality,
+            Prefs.favouritesFlow
+        ).forEach { flow ->
+            lifecycleScope.launch {
+                flow.collect {
+                    render()
+                }
+            }
+        }
+    }
 
-        </LinearLayout>
+    override fun onStart() {
+        super.onStart()
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginVertical="12dp"
-            android:gravity="center"
-            android:orientation="horizontal">
+        val token = SessionToken(
+            this,
+            ComponentName(this, RadioService::class.java)
+        )
 
-            <ImageButton
-                android:id="@+id/prev"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/prev_station"
-                android:src="@android:drawable/ic_media_previous" />
+        val future = MediaController.Builder(this, token).buildAsync()
 
-            <ImageButton
-                android:id="@+id/playPause"
-                android:layout_width="88dp"
-                android:layout_height="88dp"
-                android:layout_marginHorizontal="24dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@null"
-                android:src="@android:drawable/ic_media_play" />
+        future.addListener({
+            controller = future.get().also { c ->
+                c.addListener(object : Player.Listener {
 
-            <ImageButton
-                android:id="@+id/next"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/next_station"
-                android:src="@android:drawable/ic_media_next" />
+                    override fun onIsPlayingChanged(isPlaying: Boolean) = render()
 
-        </LinearLayout>
+                    override fun onMediaItemTransition(
+                        mediaItem: MediaItem?,
+                        reason: Int
+                    ) = render()
 
-    </LinearLayout>
+                    override fun onMediaMetadataChanged(
+                        mediaMetadata: MediaMetadata
+                    ) = render()
+                })
+            }
 
-</LinearLayout>
+            render()
+        }, MoreExecutors.directExecutor())
+    }
+
+    override fun onStop() {
+        controller?.release()
+        controller = null
+        super.onStop()
+    }
+
+    /**
+     * Quality button for the currently playing station.
+     *
+     * It's the same setting as in the station card - we save it in [Prefs], so
+     * a change made here is visible there and vice versa. The service reloads
+     * the stream on its own, since it observes this preference.
+     *
+     * Only visible when we actually know the bitrate - from the directory or,
+     * for "bare" URLs without that declaration, from the live decoder. Without
+     * it there's nothing to show, so the button disappears instead of showing
+     * a placeholder.
+     */
+    private fun renderBitrate(station: Station?) {
+        val variants = station?.variants().orEmpty()
+
+        val chosen = station?.let {
+            prefs.selectedStream(it.id)
+        } ?: variants.maxByOrNull {
+            it.kbps
+        }?.url
+
+        val current = variants.firstOrNull {
+            it.url == chosen
+        } ?: variants.firstOrNull()
+
+        val label = current?.kbpsLabel(
+            PlaybackStatusBus.qualityKbps.value
+        )
+
+        if (station == null || label == null) {
+            b.bitrate.visibility = android.view.View.GONE
+            return
+        }
+
+        b.bitrate.visibility = android.view.View.VISIBLE
+        b.bitrate.text = label
+
+        b.bitrate.setOnClickListener {
+            StreamPicker.show(this, station, prefs) {
+                renderBitrate(station)
+            }
+        }
+    }
+
+    /** Jump to the neighbouring station in the same list, with wraparound. */
+    private fun step(delta: Int) {
+        val all = repo.all()
+
+        if (all.isEmpty()) return
+
+        val currentId = PlaybackStatusBus.stationId.value
+
+        val index = all.indexOfFirst {
+            it.id == currentId
+        }
+
+        val target = if (index < 0) {
+            0
+        } else {
+            ((index + delta) % all.size + all.size) % all.size
+        }
+
+        play(all[target])
+    }
+
+    private fun play(station: Station) {
+        val c = controller ?: return
+
+        c.setMediaItem(
+            MediaItem.Builder()
+                .setMediaId(station.mediaId)
+                .build()
+        )
+
+        c.prepare()
+        c.play()
+    }
+
+    private fun render() {
+        val station = PlaybackStatusBus.stationId.value?.let {
+            repo.byId(it)
+        }
+
+        val now = PlaybackStatusBus.nowPlaying.value
+
+        b.stationName.text =
+            station?.name ?: getString(R.string.nothing_playing)
+
+        when {
+            now?.isRealSong == true -> {
+                val info = PlaybackStatusBus.trackInfo.value
+
+                b.songArtist.text =
+                    MetadataFactory.composeArtistOnly(now, info)
+
+                val album =
+                    info?.albumLabel(prefs.enrichWithYear).orEmpty()
+
+                b.songAlbum.text = album
+
+                b.songAlbum.visibility =
+                    if (album.isBlank()) {
+                        android.view.View.GONE
+                    } else {
+                        android.view.View.VISIBLE
+                    }
+
+                b.songTitle.text =
+                    MetadataFactory.displayTitle(now, info)
+            }
+
+            now?.slogan != null -> {
+                b.songTitle.text = now.slogan
+                b.songArtist.text = ""
+                b.songAlbum.visibility = android.view.View.GONE
+            }
+
+            now?.isAd == true -> {
+                val seconds = now.adDurationMs / 1000
+
+                b.songTitle.text =
+                    if (seconds > 0) {
+                        getString(R.string.ad_with_length, seconds)
+                    } else {
+                        getString(R.string.ad)
+                    }
+
+                b.songArtist.text = ""
+                b.songAlbum.visibility = android.view.View.GONE
+            }
+
+            else -> {
+                b.songTitle.text = ""
+                b.songArtist.text = ""
+                b.songAlbum.visibility = android.view.View.GONE
+            }
+        }
+
+        val isFav =
+            station != null && station.id in prefs.favourites
+
+        b.favourite.setImageResource(
+            if (isFav) {
+                R.drawable.ic_star_filled
+            } else {
+                R.drawable.ic_star_outline
+            }
+        )
+
+        b.favourite.contentDescription =
+            getString(
+                if (isFav) {
+                    R.string.fav_remove
+                } else {
+                    R.string.fav_add
+                }
+            )
+
+        b.diagnosticBanner.visibility =
+            if (prefs.diagnosticMode) {
+                android.view.View.VISIBLE
+            } else {
+                android.view.View.GONE
+            }
+
+        ArtworkLoader.into(
+            lifecycleScope,
+            PlaybackStatusBus.coverArtUrl.value?.let {
+                android.net.Uri.parse(it)
+            },
+            station?.let {
+                metadata.logoDisplayUri(it)
+            },
+            station?.let {
+                metadata.logoResId(it)
+            } ?: R.drawable.logo_placeholder,
+            b.art
+        )
+
+        val statusText = getString(
+            when (PlaybackStatusBus.status.value) {
+                PlaybackStatusBus.Status.CONNECTING ->
+                    R.string.status_connecting
+
+                PlaybackStatusBus.Status.BUFFERING ->
+                    R.string.status_buffering
+
+                PlaybackStatusBus.Status.PLAYING ->
+                    R.string.status_playing
+
+                PlaybackStatusBus.Status.RECONNECTING ->
+                    R.string.status_reconnecting
+
+                PlaybackStatusBus.Status.WAITING_FOR_NETWORK ->
+                    R.string.status_waiting_network
+
+                PlaybackStatusBus.Status.STATION_UNREACHABLE ->
+                    R.string.status_unreachable
+
+                PlaybackStatusBus.Status.IDLE ->
+                    R.string.status_idle
+            }
+        )
+
+        val quality = PlaybackStatusBus.quality.value
+
+        b.status.text =
+            if (quality.isNullOrBlank()) {
+                statusText
+            } else {
+                "$statusText · $quality"
+            }
+
+        renderBitrate(station)
+
+        b.playPause.setImageResource(
+            if (controller?.isPlaying == true) {
+                android.R.drawable.ic_media_pause
+            } else {
+                android.R.drawable.ic_media_play
+            }
+        )
+    }
+}
