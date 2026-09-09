@@ -9,6 +9,8 @@ import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
@@ -51,7 +53,33 @@ class MainActivity : AppCompatActivity() {
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
         setSupportActionBar(b.toolbar)
+        ViewCompat.setOnApplyWindowInsetsListener(b.toolbar) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
 
+            view.setPadding(
+                view.paddingLeft,
+                systemBars.top,
+                view.paddingRight,
+                view.paddingBottom
+            )
+
+                insets
+        }
+
+        ViewCompat.setOnApplyWindowInsetsListener(b.miniPlayer) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+
+            view.setPadding(
+                view.paddingLeft,
+                view.paddingTop,
+                view.paddingRight,
+                maxOf(systemBars.bottom, ime.bottom)
+            )
+
+            insets
+        }
+        
         prefs = Prefs(this)
         repo = StationRepository.get(this)
         metadata = MetadataFactory(this, prefs)
