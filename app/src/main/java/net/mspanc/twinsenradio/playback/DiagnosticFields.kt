@@ -20,19 +20,19 @@ object DiagnosticFields {
     data class Field(val api: String, val label: String)
 
     val TEXT: List<Field> = listOf(
-        Field("title", "TYTUL"),
-        Field("artist", "ARTYSTA"),
+        Field("title", "TITRE"),
+        Field("artist", "ARTISTE"),
         Field("albumTitle", "ALBUM"),
-        Field("albumArtist", "ART.ALBUMU"),
-        Field("displayTitle", "TYT.WYSW"),
-        Field("subtitle", "PODTYTUL"),
-        Field("description", "OPIS"),
-        Field("station", "STACJA"),
-        Field("genre", "GATUNEK"),
-        Field("composer", "KOMPOZYTOR"),
-        Field("writer", "AUTOR"),
-        Field("conductor", "DYRYGENT"),
-        Field("compilation", "SKLADANKA")
+        Field("albumArtist", "ART.ALBUM"),
+        Field("displayTitle", "TITRE.AFF"),
+        Field("subtitle", "SOUS-TITRE"),
+        Field("description", "DESCRIPTION"),
+        Field("station", "STATION"),
+        Field("genre", "GENRE"),
+        Field("composer", "COMPOSITEUR"),
+        Field("writer", "AUTEUR"),
+        Field("conductor", "CHEF"),
+        Field("compilation", "COMPILATION")
     )
 
     /** Numeric fields get recognizable, non-arbitrary values. */
