@@ -449,39 +449,50 @@ class Prefs(context: Context) {
  * The four presentation schemes that Android Auto actually exposes to media
  * apps (the CONTENT_STYLE_* keys in the MediaBrowser extensions).
  */
+
 object ContentStyle {
     const val LIST = 1
     const val GRID = 2
     const val CATEGORY_LIST = 3
     const val CATEGORY_GRID = 4
 
-    const val EXTRA_SUPPORTED = "android.media.browse.CONTENT_STYLE_SUPPORTED"
-    const val EXTRA_BROWSABLE_HINT = "android.media.browse.CONTENT_STYLE_BROWSABLE_HINT"
-    const val EXTRA_PLAYABLE_HINT = "android.media.browse.CONTENT_STYLE_PLAYABLE_HINT"
+    const val EXTRA_SUPPORTED =
+        "android.media.browse.CONTENT_STYLE_SUPPORTED"
+
+    const val EXTRA_BROWSABLE_HINT =
+        "android.media.browse.CONTENT_STYLE_BROWSABLE_HINT"
+
+    const val EXTRA_PLAYABLE_HINT =
+        "android.media.browse.CONTENT_STYLE_PLAYABLE_HINT"
 
     val LABELS = listOf(
-        "Lista (LIST)",
-        "Siatka (GRID)",
-        "Lista kategorii (CATEGORY_LIST)",
-        "Siatka kategorii (CATEGORY_GRID)"
+        "Liste",
+        "Grille",
+        "Liste de catégories",
+        "Grille de catégories"
     )
 
     fun indexToValue(i: Int) = i + 1
-    fun valueToIndex(v: Int) = (v - 1).coerceIn(0, 3)
+
+    fun valueToIndex(v: Int) =
+        (v - 1).coerceIn(0, 3)
 }
 
 object ArtworkMode {
+
     /** android.resource:// - Android Auto fetches the logo directly from APK resources. */
     const val RESOURCE_URI = 0
-    /** PNG bytes in the artworkData field - works even when the HU can't handle URIs. */
+
+    /** PNG bytes in the artworkData field. */
     const val EMBEDDED_BYTES = 1
-    /** No cover art - for checking what the AID shows without graphics. */
+
+    /** No cover art. */
     const val NONE = 2
 
     val LABELS = listOf(
-        "URI zasobu (android.resource://)",
-        "Bajty w metadanych (artworkData)",
-        "Bez okładki"
+        "URI de ressource (android.resource://)",
+        "Données intégrées (artworkData)",
+        "Sans pochette"
     )
 }
 
@@ -493,13 +504,37 @@ data class BufferProfile(
     val forPlaybackMs: Int,
     val afterRebufferMs: Int
 ) {
+
     companion object {
+
         val ALL = listOf(
-            BufferProfile("Mały — start ~1 s, zapas 20 s", 20_000, 30_000, 1_000, 3_000),
-            BufferProfile("Średni — start ~2 s, zapas 45 s (domyślny)", 45_000, 75_000, 2_000, 6_000),
-            BufferProfile("Duży — start ~4 s, zapas 120 s", 120_000, 180_000, 4_000, 12_000)
+            BufferProfile(
+                "Petit — démarrage ~1 s, réserve 20 s",
+                20_000,
+                30_000,
+                1_000,
+                3_000
+            ),
+
+            BufferProfile(
+                "Moyen — démarrage ~2 s, réserve 45 s (par défaut)",
+                45_000,
+                75_000,
+                2_000,
+                6_000
+            ),
+
+            BufferProfile(
+                "Grand — démarrage ~4 s, réserve 120 s",
+                120_000,
+                180_000,
+                4_000,
+                12_000
+            )
         )
 
-        fun at(index: Int) = ALL.getOrElse(index) { ALL[1] }
+        fun at(index: Int) =
+            ALL.getOrElse(index) { ALL[1] }
     }
 }
+```
