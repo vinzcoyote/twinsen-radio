@@ -1,4 +1,5 @@
 package net.mspanc.twinsenradio.ui
+
 import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
@@ -33,367 +34,489 @@ import net.mspanc.twinsenradio.playback.RadioService
 @UnstableApi
 class MainActivity : AppCompatActivity() {
 
-private lateinit var b: ActivityMainBinding
-private lateinit var prefs: Prefs
-private lateinit var repo: StationRepository
-private lateinit var metadata: MetadataFactory
-private lateinit var adapter: StationAdapter
+    private lateinit var b: ActivityMainBinding
+    private lateinit var prefs: Prefs
+    private lateinit var repo: StationRepository
+    private lateinit var metadata: MetadataFactory
+    private lateinit var adapter: StationAdapter
 
-private var controller: MediaController? = null
+    private var controller: MediaController? = null
 
-/** Station to switch on as soon as the controller attaches (see [EXTRA_PLAY_STATION]). */
-private var pendingStationId: String? = null
-private val notificationPermission =
-registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* optional */ }
+    /** Station to switch on as soon as the controller attaches (see [EXTRA_PLAY_STATION]). */
+    private var pendingStationId: String? = null
 
-override fun onCreate(savedInstanceState: Bundle?) {
-super.onCreate(savedInstanceState)
-b = ActivityMainBinding.inflate(layoutInflater)
-setContentView(b.root)
-setSupportActionBar(b.toolbar)
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* optional */ }
 
-ViewCompat.setOnApplyWindowInsetsListener(b.root) { view, insets ->
-val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-view.setPadding(
-view.paddingLeft,
-systemBars.top,
-view.paddingRight,
-maxOf(systemBars.bottom, ime.bottom)
-)
+        b = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(b.root)
 
-insets
-}
+        setSupportActionBar(b.toolbar)
 
-prefs = Prefs(this)
-repo = StationRepository.get(this)
-metadata = MetadataFactory(this, prefs)
-adapter = StationAdapter(
-subtitleFor = { it.genre },
-actionIconFor = {
-if (it.id in prefs.favourites) android.R.drawable.btn_star_big_on
-else android.R.drawable.btn_star_big_off
-},
-loadLogo = ::showLogo,
-onClick = ::play,
-onAction = { prefs.toggleFavourite(it.id) },
-onLogoClick = { startActivity(StationInfoActivity.intent(this, it)) }
-)
+        ViewCompat.setOnApplyWindowInsetsListener(b.root) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
 
-b.list.layoutManager = LinearLayoutManager(this)
-b.list.adapter = adapter
+            view.setPadding(
+                view.paddingLeft,
+                systemBars.top,
+                view.paddingRight,
+                maxOf(systemBars.bottom, ime.bottom)
+            )
 
-b.tabs.addTab(b.tabs.newTab().setText(R.string.tab_all))
-b.tabs.addTab(b.tabs.newTab().setText(R.string.tab_favourites))
+            insets
+        }
 
-b.tabs.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
-override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) = refreshList()
-override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab) = Unit
-override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab) = Unit
-})
+        prefs = Prefs(this)
+        repo = StationRepository.get(this)
+        metadata = MetadataFactory(this, prefs)
 
-b.search.doAfterTextChanged { refreshList() }
-b.search.setOnClickListener { showHistory() }
-b.search.setOnFocusChangeListener { _, hasFocus -> if (hasFocus) showHistory() }
+        adapter = StationAdapter(
+            subtitleFor = { it.genre },
+            actionIconFor = {
+                if (it.id in prefs.favourites) android.R.drawable.btn_star_big_on
+                else android.R.drawable.btn_star_big_off
+            },
+            loadLogo = ::showLogo,
+            onClick = ::play,
+            onAction = { prefs.toggleFavourite(it.id) },
+            onLogoClick = { startActivity(StationInfoActivity.intent(this, it)) }
+        )
 
-b.search.setOnEditorActionListener { _, _, _ ->
-prefs.pushLocalSearch(b.search.text?.toString().orEmpty())
-refreshHistory()
-hideKeyboard()
-true
-}
+        b.list.layoutManager = LinearLayoutManager(this)
+        b.list.adapter = adapter
 
-refreshHistory()
+        b.tabs.addTab(b.tabs.newTab().setText(R.string.tab_all))
+        b.tabs.addTab(b.tabs.newTab().setText(R.string.tab_favourites))
 
-b.playPause.setOnClickListener {
-val c = controller ?: return@setOnClickListener
-if (c.isPlaying) c.pause() else c.play()
-}
+        b.tabs.addOnTabSelectedListener(
+            object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) =
+                    refreshList()
 
-b.miniPlayer.setOnClickListener {
-if (PlaybackStatusBus.stationId.value != null) {
-startActivity(Intent(this, NowPlayingActivity::class.java))
-}
-}
+                override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab) =
+                    Unit
 
-askForNotificationPermission()
-observeStatus()
-handleIntent(intent)
+                override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab) =
+                    Unit
+            }
+        )
 
-lifecycleScope.launch {
-repo.refreshUserLists()
-adapter.submitList(repo.search(b.search.text?.toString().orEmpty()))
-}
-}
+        b.search.doAfterTextChanged { refreshList() }
+        b.search.setOnClickListener { showHistory() }
+        b.search.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) showHistory()
+        }
 
-override fun onStart() {
-super.onStart()
-val token = SessionToken(this, ComponentName(this, RadioService::class.java))
-val future = MediaController.Builder(this, token).buildAsync()
+        b.search.setOnEditorActionListener { _, _, _ ->
+            prefs.pushLocalSearch(b.search.text?.toString().orEmpty())
+            refreshHistory()
+            hideKeyboard()
+            true
+        }
 
-future.addListener({
-controller = future.get().also { c ->
-c.addListener(object : Player.Listener {
-override fun onIsPlayingChanged(isPlaying: Boolean) = renderMiniPlayer()
-override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = renderMiniPlayer()
-override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) =
-renderMiniPlayer()
-})
-}
+        refreshHistory()
 
-pendingStationId?.let { id ->
-pendingStationId = null
-repo.byId(id)?.let(::play)
-}
+        b.playPause.setOnClickListener {
+            val c = controller ?: return@setOnClickListener
+            if (c.isPlaying) c.pause() else c.play()
+        }
 
-renderMiniPlayer()
-}, MoreExecutors.directExecutor())
-}
+        b.miniPlayer.setOnClickListener {
+            if (PlaybackStatusBus.stationId.value != null) {
+                startActivity(Intent(this, NowPlayingActivity::class.java))
+            }
+        }
 
-override fun onNewIntent(intent: Intent) {
-super.onNewIntent(intent)
-setIntent(intent)
-handleIntent(intent)
-}
+        askForNotificationPermission()
+        observeStatus()
+        handleIntent(intent)
 
-private fun handleIntent(intent: Intent?) {
-val id = intent?.getStringExtra(EXTRA_PLAY_STATION) ?: return
-val station = repo.byId(id) ?: return
-val c = controller
-if (c != null) play(station) else pendingStationId = id
-}
+        lifecycleScope.launch {
+            repo.refreshUserLists()
+            adapter.submitList(repo.search(b.search.text?.toString().orEmpty()))
+        }
+    }
 
-override fun onStop() {
-controller?.release()
-controller = null
-super.onStop()
-}
+    override fun onStart() {
+        super.onStart()
 
-override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
-menuInflater.inflate(R.menu.main, menu)
-return true
-}
+        val token = SessionToken(this, ComponentName(this, RadioService::class.java))
+        val future = MediaController.Builder(this, token).buildAsync()
 
-override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean = when (item.itemId) {
-R.id.action_search -> {
-toggleSearch()
-true
-}
-R.id.action_settings -> {
-startActivity(Intent(this, SettingsActivity::class.java))
-true
-}
-R.id.action_sort -> {
-showSortDialog()
-true
-}
-R.id.action_discover -> {
-startActivity(Intent(this, DiscoverActivity::class.java))
-true
-}
-else -> super.onOptionsItemSelected(item)
-}
+        future.addListener({
+            controller = future.get().also { c ->
+                c.addListener(
+                    object : Player.Listener {
+                        override fun onIsPlayingChanged(isPlaying: Boolean) =
+                            renderMiniPlayer()
 
-private fun showSortDialog() {
-val options = StationSort.LABELS.toTypedArray()
+                        override fun onMediaItemTransition(
+                            mediaItem: MediaItem?,
+                            reason: Int
+                        ) = renderMiniPlayer()
 
-com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-.setTitle(R.string.sort_title)
-.setSingleChoiceItems(options, prefs.stationSort.ordinal) { dialog, which ->
-prefs.stationSort = StationSort.at(which)
-refreshList()
-dialog.dismiss()
-}
-.show()
-}
+                        override fun onMediaMetadataChanged(
+                            mediaMetadata: androidx.media3.common.MediaMetadata
+                        ) = renderMiniPlayer()
+                    }
+                )
+            }
 
-private fun toggleSearch() {
-val visible = b.searchLayout.visibility == android.view.View.VISIBLE
+            pendingStationId?.let { id ->
+                pendingStationId = null
+                repo.byId(id)?.let(::play)
+            }
 
-if (visible) {
-b.search.setText("")
-b.searchLayout.visibility = android.view.View.GONE
-hideKeyboard()
-} else {
-b.searchLayout.visibility = android.view.View.VISIBLE
-b.search.requestFocus()
-val imm = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
-imm?.showSoftInput(b.search, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-showHistory()
-}
-}
+            renderMiniPlayer()
+        }, MoreExecutors.directExecutor())
+    }
 
-private fun hideKeyboard() {
-val imm = getSystemService(android.view.inputmethod.InputMethodManager::class.java)
-imm?.hideSoftInputFromWindow(b.search.windowToken, 0)
-}
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
 
-private fun refreshHistory() {
-b.search.setAdapter(
-android.widget.ArrayAdapter(
-this,
-android.R.layout.simple_list_item_1,
-prefs.localSearchHistory
-)
-)
-}
+    private fun handleIntent(intent: Intent?) {
+        val id = intent?.getStringExtra(EXTRA_PLAY_STATION) ?: return
+        val station = repo.byId(id) ?: return
+        val c = controller
 
-private fun showHistory() {
-if (b.search.text.isNullOrBlank() && prefs.localSearchHistory.isNotEmpty()) {
-b.search.showDropDown()
-}
-}
+        if (c != null) {
+            play(station)
+        } else {
+            pendingStationId = id
+        }
+    }
 
-private fun showLogo(station: Station, view: android.widget.ImageView) {
-ArtworkLoader.into(
-lifecycleScope,
-null,
-metadata.logoDisplayUri(station),
-metadata.logoResId(station),
-view
-)
-}
+    override fun onStop() {
+        controller?.release()
+        controller = null
+        super.onStop()
+    }
 
-private fun play(station: Station) {
-val c = controller ?: return
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menuInflater.inflate(R.menu.main, menu)
 
-if (PlaybackStatusBus.stationId.value == station.id && c.isPlaying) {
-startActivity(Intent(this, NowPlayingActivity::class.java))
-return
-}
+        b.toolbar.overflowIcon?.mutate()?.setTint(
+            ContextCompat.getColor(this, R.color.on_brand)
+        )
 
-c.setMediaItem(MediaItem.Builder().setMediaId(station.mediaId).build())
-c.prepare()
-c.play()
-}
+        return true
+    }
 
-private fun observeStatus() {
-lifecycleScope.launch {
-PlaybackStatusBus.status.collect { renderMiniPlayer() }
-}
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean =
+        when (item.itemId) {
+            R.id.action_search -> {
+                toggleSearch()
+                true
+            }
 
-lifecycleScope.launch {
-PlaybackStatusBus.nowPlaying.collect { renderMiniPlayer() }
-}
+            R.id.action_settings -> {
+                startActivity(Intent(this, SettingsActivity::class.java))
+                true
+            }
 
-lifecycleScope.launch {
-PlaybackStatusBus.stationId.collect { renderMiniPlayer() }
-}
+            R.id.action_sort -> {
+                showSortDialog()
+                true
+            }
 
-lifecycleScope.launch {
-PlaybackStatusBus.coverArtUrl.collect { renderMiniPlayer() }
-}
+            R.id.action_discover -> {
+                startActivity(Intent(this, DiscoverActivity::class.java))
+                true
+            }
 
-lifecycleScope.launch {
-Prefs.favouritesFlow.collect {
-if (b.tabs.selectedTabPosition == 1) refreshList()
-adapter.notifyItemRangeChanged(0, adapter.itemCount)
-}
-}
+            else -> super.onOptionsItemSelected(item)
+        }
 
-lifecycleScope.launch {
-Prefs.discoveredFlow.collect { refreshList() }
-}
+    private fun showSortDialog() {
+        val options = StationSort.LABELS.toTypedArray()
 
-lifecycleScope.launch {
-Prefs.hiddenFlow.collect { refreshList() }
-}
-}
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.sort_title)
+            .setSingleChoiceItems(options, prefs.stationSort.ordinal) { dialog, which ->
+                prefs.stationSort = StationSort.at(which)
+                refreshList()
+                dialog.dismiss()
+            }
+            .show()
+    }
 
-override fun onResume() {
-super.onResume()
-refreshList()
-adapter.notifyItemRangeChanged(0, adapter.itemCount)
-}
+    private fun toggleSearch() {
+        val visible = b.searchLayout.visibility == android.view.View.VISIBLE
 
-private fun refreshList() {
-val query = b.search.text?.toString().orEmpty()
-val found = repo.search(query)
+        if (visible) {
+            b.search.setText("")
+            b.searchLayout.visibility = android.view.View.GONE
+            hideKeyboard()
+        } else {
+            b.searchLayout.visibility = android.view.View.VISIBLE
+            b.search.requestFocus()
 
-val list = if (b.tabs.selectedTabPosition == 1) {
-found.filter { it.id in prefs.favourites }
-} else {
-found
-}
+            val imm = getSystemService(
+                android.view.inputmethod.InputMethodManager::class.java
+            )
 
-adapter.submitList(list) { b.list.scrollToPosition(0) }
-}
+            imm?.showSoftInput(
+                b.search,
+                android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT
+            )
 
-private fun renderMiniPlayer() {
-val station = PlaybackStatusBus.stationId.value?.let { repo.byId(it) }
-val now = PlaybackStatusBus.nowPlaying.value
+            showHistory()
+        }
+    }
 
-b.miniTitle.text = station?.name ?: getString(R.string.nothing_playing)
+    private fun hideKeyboard() {
+        val imm = getSystemService(
+            android.view.inputmethod.InputMethodManager::class.java
+        )
 
-b.miniSubtitle.text = when {
-now?.isRealSong == true -> {
-val info = PlaybackStatusBus.trackInfo.value
-listOf(
-MetadataFactory.displayArtist(now, info),
-MetadataFactory.displayTitle(now, info)
-).filter { it.isNotBlank() }.joinToString(" — ")
-}
-now?.slogan != null -> now.slogan
-now?.isAd == true -> getString(R.string.ad)
-else -> station?.genre.orEmpty()
-}
+        imm?.hideSoftInputFromWindow(b.search.windowToken, 0)
+    }
 
-b.miniStatus.text = getString(
-when (PlaybackStatusBus.status.value) {
-PlaybackStatusBus.Status.CONNECTING -> R.string.status_connecting
-PlaybackStatusBus.Status.BUFFERING -> R.string.status_buffering
-PlaybackStatusBus.Status.PLAYING -> R.string.status_playing
-PlaybackStatusBus.Status.RECONNECTING -> R.string.status_reconnecting
-PlaybackStatusBus.Status.WAITING_FOR_NETWORK -> R.string.status_waiting_network
-PlaybackStatusBus.Status.STATION_UNREACHABLE -> R.string.status_unreachable
-PlaybackStatusBus.Status.IDLE -> R.string.status_idle
-}
-)
+    private fun refreshHistory() {
+        b.search.setAdapter(
+            android.widget.ArrayAdapter(
+                this,
+                android.R.layout.simple_list_item_1,
+                prefs.localSearchHistory
+            )
+        )
+    }
 
-ArtworkLoader.into(
-lifecycleScope,
-PlaybackStatusBus.coverArtUrl.value?.let { android.net.Uri.parse(it) },
-station?.let { metadata.logoDisplayUri(it) },
-station?.let { metadata.logoResId(it) } ?: R.drawable.logo_placeholder,
-b.miniLogo
-)
+    private fun showHistory() {
+        if (b.search.text.isNullOrBlank() && prefs.localSearchHistory.isNotEmpty()) {
+            b.search.showDropDown()
+        }
+    }
 
-b.playPause.setImageResource(
-if (controller?.isPlaying == true) android.R.drawable.ic_media_pause
-else android.R.drawable.ic_media_play
-)
+    private fun showLogo(station: Station, view: android.widget.ImageView) {
+        ArtworkLoader.into(
+            lifecycleScope,
+            null,
+            metadata.logoDisplayUri(station),
+            metadata.logoResId(station),
+            view
+        )
+    }
 
-val variants = station?.variants().orEmpty()
-val chosen = station?.let { prefs.selectedStream(it.id) } ?: variants.maxByOrNull { it.kbps }?.url
-val current = variants.firstOrNull { it.url == chosen } ?: variants.firstOrNull()
-val label = current?.kbpsLabel(PlaybackStatusBus.qualityKbps.value)
+    private fun play(station: Station) {
+        val c = controller ?: return
 
-if (station == null || label == null) {
-b.bitrate.visibility = android.view.View.GONE
-} else {
-b.bitrate.visibility = android.view.View.VISIBLE
-b.bitrate.text = label
-b.bitrate.setOnClickListener {
-StreamPicker.show(this, station, prefs) { renderMiniPlayer() }
-}
-}
-}
+        if (PlaybackStatusBus.stationId.value == station.id && c.isPlaying) {
+            startActivity(Intent(this, NowPlayingActivity::class.java))
+            return
+        }
 
-private fun askForNotificationPermission() {
-if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        c.setMediaItem(
+            MediaItem.Builder()
+                .setMediaId(station.mediaId)
+                .build()
+        )
 
-val granted = ContextCompat.checkSelfPermission(
-this,
-Manifest.permission.POST_NOTIFICATIONS
-) == PackageManager.PERMISSION_GRANTED
+        c.prepare()
+        c.play()
+    }
 
-if (!granted) {
-notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-}
-}
+    private fun observeStatus() {
+        lifecycleScope.launch {
+            PlaybackStatusBus.status.collect {
+                renderMiniPlayer()
+            }
+        }
 
-companion object {
-const val EXTRA_PLAY_STATION = "play_station"
-}
+        lifecycleScope.launch {
+            PlaybackStatusBus.nowPlaying.collect {
+                renderMiniPlayer()
+            }
+        }
+
+        lifecycleScope.launch {
+            PlaybackStatusBus.stationId.collect {
+                renderMiniPlayer()
+            }
+        }
+
+        lifecycleScope.launch {
+            PlaybackStatusBus.coverArtUrl.collect {
+                renderMiniPlayer()
+            }
+        }
+
+        lifecycleScope.launch {
+            Prefs.favouritesFlow.collect {
+                if (b.tabs.selectedTabPosition == 1) {
+                    refreshList()
+                }
+
+                adapter.notifyItemRangeChanged(0, adapter.itemCount)
+            }
+        }
+
+        lifecycleScope.launch {
+            Prefs.discoveredFlow.collect {
+                refreshList()
+            }
+        }
+
+        lifecycleScope.launch {
+            Prefs.hiddenFlow.collect {
+                refreshList()
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        refreshList()
+        adapter.notifyItemRangeChanged(0, adapter.itemCount)
+    }
+
+    private fun refreshList() {
+        val query = b.search.text?.toString().orEmpty()
+        val found = repo.search(query)
+
+        val list = if (b.tabs.selectedTabPosition == 1) {
+            found.filter { it.id in prefs.favourites }
+        } else {
+            found
+        }
+
+        adapter.submitList(list) {
+            b.list.scrollToPosition(0)
+        }
+    }
+
+    private fun renderMiniPlayer() {
+        val station = PlaybackStatusBus.stationId.value?.let {
+            repo.byId(it)
+        }
+
+        val now = PlaybackStatusBus.nowPlaying.value
+
+        b.miniTitle.text =
+            station?.name ?: getString(R.string.nothing_playing)
+
+        b.miniSubtitle.text = when {
+            now?.isRealSong == true -> {
+                val info = PlaybackStatusBus.trackInfo.value
+
+                listOf(
+                    MetadataFactory.displayArtist(now, info),
+                    MetadataFactory.displayTitle(now, info)
+                )
+                    .filter { it.isNotBlank() }
+                    .joinToString(" — ")
+            }
+
+            now?.slogan != null -> now.slogan
+            now?.isAd == true -> getString(R.string.ad)
+            else -> station?.genre.orEmpty()
+        }
+
+        b.miniStatus.text = getString(
+            when (PlaybackStatusBus.status.value) {
+                PlaybackStatusBus.Status.CONNECTING ->
+                    R.string.status_connecting
+
+                PlaybackStatusBus.Status.BUFFERING ->
+                    R.string.status_buffering
+
+                PlaybackStatusBus.Status.PLAYING ->
+                    R.string.status_playing
+
+                PlaybackStatusBus.Status.RECONNECTING ->
+                    R.string.status_reconnecting
+
+                PlaybackStatusBus.Status.WAITING_FOR_NETWORK ->
+                    R.string.status_waiting_network
+
+                PlaybackStatusBus.Status.STATION_UNREACHABLE ->
+                    R.string.status_unreachable
+
+                PlaybackStatusBus.Status.IDLE ->
+                    R.string.status_idle
+            }
+        )
+
+        ArtworkLoader.into(
+            lifecycleScope,
+            PlaybackStatusBus.coverArtUrl.value?.let {
+                android.net.Uri.parse(it)
+            },
+            station?.let {
+                metadata.logoDisplayUri(it)
+            },
+            station?.let {
+                metadata.logoResId(it)
+            } ?: R.drawable.logo_placeholder,
+            b.miniLogo
+        )
+
+        b.playPause.setImageResource(
+            if (controller?.isPlaying == true) {
+                android.R.drawable.ic_media_pause
+            } else {
+                android.R.drawable.ic_media_play
+            }
+        )
+
+        val variants = station?.variants().orEmpty()
+
+        val chosen = station?.let {
+            prefs.selectedStream(it.id)
+        } ?: variants.maxByOrNull {
+            it.kbps
+        }?.url
+
+        val current =
+            variants.firstOrNull { it.url == chosen }
+                ?: variants.firstOrNull()
+
+        val label = current?.kbpsLabel(
+            PlaybackStatusBus.qualityKbps.value
+        )
+
+        if (station == null || label == null) {
+            b.bitrate.visibility = android.view.View.GONE
+        } else {
+            b.bitrate.visibility = android.view.View.VISIBLE
+            b.bitrate.text = label
+
+            b.bitrate.setOnClickListener {
+                StreamPicker.show(
+                    this,
+                    station,
+                    prefs
+                ) {
+                    renderMiniPlayer()
+                }
+            }
+        }
+    }
+
+    private fun askForNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!granted) {
+            notificationPermission.launch(
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+        }
+    }
+
+    companion object {
+        const val EXTRA_PLAY_STATION = "play_station"
+    }
 }
