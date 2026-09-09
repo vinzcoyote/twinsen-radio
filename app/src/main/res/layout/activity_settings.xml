@@ -3,7 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="?attr/colorPrimary">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
@@ -14,382 +15,413 @@
         app:title="@string/settings_title"
         app:titleTextColor="@color/on_brand" />
 
-    <androidx.core.widget.NestedScrollView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingHorizontal="12dp"
-        android:paddingTop="12dp">
+        android:orientation="vertical"
+        android:background="?attr/colorSurface">
 
-        <LinearLayout
+        <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="12dp">
 
-            <!-- ============ Opis na desce ============ -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.Material3.CardView.Filled"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
+                android:orientation="vertical">
 
-                <LinearLayout
+                <!-- ============ Opis na desce ============ -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Material3.CardView.Filled"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_marginBottom="12dp">
 
-                    <TextView
-                        style="@style/SectionHeader"
-                        android:text="@string/opt_sec_lines" />
-
-                    <TextView
-                        style="@style/SectionNote"
-                        android:text="@string/opt_lines_intro" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/tilLineTop"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/ddLineTop"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:editable="false"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/tilLineMiddle"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/ddLineMiddle"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:editable="false"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/tilLineBottom"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/ddLineBottom"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:editable="false"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <View style="@style/SectionDivider" />
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/swEnrich"
-                        style="@style/SettingSwitch"
-                        android:text="@string/opt_enrich" />
-
-                    <TextView
-                        style="@style/SettingNote"
-                        android:text="@string/opt_enrich_sub" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- ============ Grafika ============ -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.Material3.CardView.Filled"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        style="@style/SectionHeader"
-                        android:text="@string/opt_sec_artwork" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/tilClockFace"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="@string/opt_clock_face">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/ddClockFace"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:editable="false"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/swClockAlways"
-                        style="@style/SettingSwitch"
-                        android:text="@string/opt_clock_always" />
-
-                    <TextView
-                        style="@style/SettingNote"
-                        android:text="@string/opt_clock_always_sub" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/tilClockBg"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:hint="@string/opt_clock_bg">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/ddClockBg"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:editable="false"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/tilClockFg"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:hint="@string/opt_clock_fg">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/ddClockFg"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:editable="false"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <View style="@style/SectionDivider" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/opt_artwork">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/ddArtwork"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:editable="false"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- ============ Tryb diagnostyczny ============ -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.Material3.CardView.Filled"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        style="@style/SectionHeader"
-                        android:text="@string/opt_sec_diag" />
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/swDiag"
-                        style="@style/SettingSwitch"
-                        android:text="@string/opt_diag" />
-
-                    <TextView
-                        style="@style/SettingNote"
-                        android:text="@string/opt_diag_sub" />
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/swDiagApi"
-                        style="@style/SettingSwitch"
-                        android:text="@string/opt_diag_api" />
-
-                    <TextView
-                        style="@style/SettingNote"
-                        android:text="@string/opt_diag_api_sub" />
-
-                    <TextView
-                        android:id="@+id/tvLegend"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:background="?attr/colorSurfaceContainerHighest"
-                        android:fontFamily="monospace"
-                        android:padding="12dp"
-                        android:textAppearance="?attr/textAppearanceBodySmall" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- ============ Listy w Android Auto ============ -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.Material3.CardView.Filled"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        style="@style/SectionHeader"
-                        android:text="@string/opt_sec_browse" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="@string/opt_style_browsable">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/ddBrowsable"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:editable="false"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:hint="@string/opt_style_playable">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/ddPlayable"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:editable="false"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- ============ Strumień ============ -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.Material3.CardView.Filled"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        style="@style/SectionHeader"
-                        android:text="@string/opt_sec_stream" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="@string/opt_buffer">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/ddBuffer"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:editable="false"
-                            android:inputType="none" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <View style="@style/SectionDivider" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="@string/opt_m3u">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/etM3u"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:gravity="top|start"
-                            android:inputType="textMultiLine|textUri"
-                            android:minLines="3" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <TextView
-                        style="@style/SettingNote"
-                        android:text="@string/opt_m3u_sub" />
-
-                    <!-- Widoczne tylko wtedy, gdy jest co przywracac -->
                     <LinearLayout
-                        android:id="@+id/hiddenBox"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:visibility="gone">
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SectionHeader"
+                            android:text="@string/opt_sec_lines" />
+
+                        <TextView
+                            style="@style/SectionNote"
+                            android:text="@string/opt_lines_intro" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilLineTop"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/ddLineTop"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:editable="false"
+                                android:inputType="none" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilLineMiddle"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/ddLineMiddle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:editable="false"
+                                android:inputType="none" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilLineBottom"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/ddLineBottom"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:editable="false"
+                                android:inputType="none" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
 
                         <View style="@style/SectionDivider" />
 
-                        <TextView
-                            android:id="@+id/hiddenLabel"
-                            style="@style/SectionNote"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content" />
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/swEnrich"
+                            style="@style/SettingSwitch"
+                            android:text="@string/opt_enrich" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnRestoreHidden"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
+                        <TextView
+                            style="@style/SettingNote"
+                            android:text="@string/opt_enrich_sub" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ============ Grafika ============ -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Material3.CardView.Filled"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SectionHeader"
+                            android:text="@string/opt_sec_artwork" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilClockFace"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:text="@string/opt_restore_hidden" />
+                            android:hint="@string/opt_clock_face">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/ddClockFace"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:editable="false"
+                                android:inputType="none" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/swClockAlways"
+                            style="@style/SettingSwitch"
+                            android:text="@string/opt_clock_always" />
+
+                        <TextView
+                            style="@style/SettingNote"
+                            android:text="@string/opt_clock_always_sub" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilClockBg"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:hint="@string/opt_clock_bg">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/ddClockBg"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:editable="false"
+                                android:inputType="none" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/tilClockFg"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:hint="@string/opt_clock_fg">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/ddClockFg"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:editable="false"
+                                android:inputType="none" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <View style="@style/SectionDivider" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/opt_artwork">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/ddArtwork"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:editable="false"
+                                android:inputType="none" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
                     </LinearLayout>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="8dp" />
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+                </com.google.android.material.card.MaterialCardView>
 
-    <!-- Pasek zapisu przyklejony na dole - przy tylu sekcjach szukanie przycisku
-         na koncu przewijania bylo uciazliwe. -->
-    <com.google.android.material.divider.MaterialDivider
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+                <!-- ============ Tryb diagnostyczny ============ -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Material3.CardView.Filled"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnSave"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="12dp"
-        android:text="@string/opt_save" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SectionHeader"
+                            android:text="@string/opt_sec_diag" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/swDiag"
+                            style="@style/SettingSwitch"
+                            android:text="@string/opt_diag" />
+
+                        <TextView
+                            style="@style/SettingNote"
+                            android:text="@string/opt_diag_sub" />
+
+                        <com.google.android.material.materialswitch.MaterialSwitch
+                            android:id="@+id/swDiagApi"
+                            style="@style/SettingSwitch"
+                            android:text="@string/opt_diag_api" />
+
+                        <TextView
+                            style="@style/SettingNote"
+                            android:text="@string/opt_diag_api_sub" />
+
+                        <TextView
+                            android:id="@+id/tvLegend"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:background="?attr/colorSurfaceContainerHighest"
+                            android:fontFamily="monospace"
+                            android:padding="12dp"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ============ Listy w Android Auto ============ -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Material3.CardView.Filled"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SectionHeader"
+                            android:text="@string/opt_sec_browse" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:hint="@string/opt_style_browsable">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/ddBrowsable"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:editable="false"
+                                android:inputType="none" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:hint="@string/opt_style_playable">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/ddPlayable"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:editable="false"
+                                android:inputType="none" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- ============ Strumień ============ -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Material3.CardView.Filled"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SectionHeader"
+                            android:text="@string/opt_sec_stream" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:hint="@string/opt_buffer">
+
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/ddBuffer"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:editable="false"
+                                android:inputType="none" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <View style="@style/SectionDivider" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/opt_m3u">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/etM3u"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:gravity="top|start"
+                                android:inputType="textMultiLine|textUri"
+                                android:minLines="3" />
+
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <TextView
+                            style="@style/SettingNote"
+                            android:text="@string/opt_m3u_sub" />
+
+                        <LinearLayout
+                            android:id="@+id/hiddenBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <View style="@style/SectionDivider" />
+
+                            <TextView
+                                android:id="@+id/hiddenLabel"
+                                style="@style/SectionNote"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnRestoreHidden"
+                                style="@style/Widget.Material3.Button.OutlinedButton"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="@string/opt_restore_hidden" />
+
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp" />
+
+            </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
+
+        <com.google.android.material.divider.MaterialDivider
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="12dp"
+            android:text="@string/opt_save" />
+
+    </LinearLayout>
+
 </LinearLayout>
