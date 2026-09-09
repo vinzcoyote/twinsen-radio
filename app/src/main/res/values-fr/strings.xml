@@ -19,7 +19,7 @@
 
     <string name="discover_title">Rechercher des stations</string>
     <string name="discover_hint">Nom de la station…</string>
-    <string name="discover_intro">Saisissez un nom pour rechercher dans le catalogue radio-browser.info — une base ouverte d'environ 50 000 stations du monde entier. Touchez le nom pour afficher les détails ; le bouton à côté permet d'ajouter la station à votre liste.</string>
+    <string name="discover_intro">Saisissez un nom pour rechercher dans le catalogue radio-browser.info — une base ouverte d\'environ 50 000 stations du monde entier. Touchez le nom pour afficher les détails ; le bouton à côté permet d\'ajouter la station à votre liste.</string>
     <string name="discover_added_header">Vos stations ajoutées depuis Internet (%1$d)</string>
     <string name="discover_added_hint">Touchez pour afficher les détails. Le bouton à côté permet de retirer la station de la liste.</string>
     <string name="discover_recent">Recherches récentes</string>
@@ -27,14 +27,14 @@
     <string name="sort_title">Tri</string>
     <string name="tab_all">Toutes</string>
     <string name="tab_favourites">Favoris</string>
-    <string name="no_favourites">Vous n'avez encore aucune station favorite. Ajoutez-les avec l'étoile dans la liste.</string>
+    <string name="no_favourites">Vous n\'avez encore aucune station favorite. Ajoutez-les avec l\'étoile dans la liste.</string>
 
     <string name="opt_bitrate">Qualité</string>
     <string name="stream_picker_title">Choisir le flux</string>
     <string name="action_ok">OK</string>
     <string name="action_cancel">Annuler</string>
 
-    <string name="discover_empty">Vous n'avez encore aucune station ajoutée depuis Internet.</string>
+    <string name="discover_empty">Vous n\'avez encore aucune station ajoutée depuis Internet.</string>
     <string name="discover_searching">Recherche…</string>
 
     <string name="info_title">À propos de la station</string>
@@ -49,7 +49,7 @@
     <string name="info_streams_note">Par défaut, la version de meilleure qualité est utilisée. Le choix est mémorisé pour cette station.</string>
 
     <string name="info_custom_stream">Adresse de flux personnalisée</string>
-    <string name="info_custom_stream_note">L'adresse saisie ici est prioritaire sur celles ci-dessus — elle fonctionne également pour les stations intégrées. Laissez le champ vide pour revenir au choix de la liste.</string>
+    <string name="info_custom_stream_note">L\'adresse saisie ici est prioritaire sur celles ci-dessus — elle fonctionne également pour les stations intégrées. Laissez le champ vide pour revenir au choix de la liste.</string>
     <string name="info_change_logo">Modifier le logo de la station…</string>
     <string name="info_logo_changed">Logo modifié</string>
     <string name="info_saved">Enregistré</string>
@@ -57,7 +57,7 @@
     <string name="info_probe">Tester le fonctionnement du flux</string>
     <string name="info_probing">Vérification…</string>
     <string name="info_probe_ok">Fonctionne — %1$s</string>
-    <string name="info_probe_no_host">Le serveur n'existe pas. La station a été retirée.</string>
+    <string name="info_probe_no_host">Le serveur n\'existe pas. La station a été retirée.</string>
     <string name="info_probe_http">Le serveur a refusé la connexion : %1$s</string>
     <string name="info_probe_timeout">Le serveur ne répond pas.</string>
     <string name="info_probe_failed">Impossible de se connecter : %1$s</string>
@@ -82,8 +82,8 @@
     <string name="diagnostic_banner_line1">MODE DIAGNOSTIC</string>
     <string name="diagnostic_banner_line2">Concerne uniquement Android Auto — les champs de métadonnées y sont remplacés par des étiquettes. Ici, vous voyez les vraies données.</string>
 
-    <string name="opt_clock_bg">Arrière-plan de l'horloge</string>
-    <string name="opt_clock_fg">Couleur de l'horloge</string>
+    <string name="opt_clock_bg">Arrière-plan de l\'horloge</string>
+    <string name="opt_clock_fg">Couleur de l\'horloge</string>
 
     <string name="opt_sec_lines">Affichage sur le tableau de bord</string>
     <string name="opt_sec_artwork">Illustration</string>
@@ -91,7 +91,7 @@
     <string name="opt_sec_browse">Listes dans Android Auto</string>
     <string name="opt_sec_stream">Flux et stations personnalisées</string>
 
-    <string name="opt_lines_intro">Mesuré dans une Passat : l'Active Info Display affiche trois lignes, l'écran central affiche la première et la troisième. La ligne centrale est visible uniquement sur l'AID. Les champs sont communs : ce qui est placé sur la ligne 1 ou 3 ne peut pas être masqué sur l'écran central.</string>
+    <string name="opt_lines_intro">Mesuré dans une Passat : l\'Active Info Display affiche trois lignes, l\'écran central affiche la première et la troisième. La ligne centrale est visible uniquement sur l\'AID. Les champs sont communs : ce qui est placé sur la ligne 1 ou 3 ne peut pas être masqué sur l\'écran central.</string>
 
     <string name="opt_clock_face">À la place de la pochette</string>
     <string name="aid_waiting_network">En attente du réseau…</string>
@@ -101,21 +101,21 @@
     <string name="opt_restore_hidden">Tout restaurer</string>
     <string name="opt_restored_toast">Stations masquées restaurées</string>
 
-    <string name="opt_enrich">Ajouter l'année à l'album</string>
-    <string name="opt_enrich_sub">L'album du catalogue iTunes (par exemple « Księga ») est toujours affiché lorsqu'il est connu. Cette option détermine uniquement si l'année est ajoutée — par exemple « Księga [2024] » au lieu de « Księga ».</string>
+    <string name="opt_enrich">Ajouter l\'année à l\'album</string>
+    <string name="opt_enrich_sub">L\'album du catalogue iTunes (par exemple « Księga ») est toujours affiché lorsqu\'il est connu. Cette option détermine uniquement si l\'année est ajoutée — par exemple « Księga [2024] » au lieu de « Księga ».</string>
 
     <string name="ad">Publicité</string>
     <string name="ad_with_length">Publicité · %1$d s</string>
 
     <string name="opt_presentation">Présentation des informations du morceau</string>
-    <string name="opt_clock_always">Toujours afficher l'horloge à la place de la pochette</string>
-    <string name="opt_clock_always_sub">Lorsqu'elle est désactivée, l'horloge apparaît uniquement lorsqu'aucune pochette n'a été trouvée pour le morceau, à la place du logo de la station.</string>
+    <string name="opt_clock_always">Toujours afficher l\'horloge à la place de la pochette</string>
+    <string name="opt_clock_always_sub">Lorsqu\'elle est désactivée, l\'horloge apparaît uniquement lorsqu\'aucune pochette n\'a été trouvée pour le morceau, à la place du logo de la station.</string>
 
     <string name="prev_station">Station précédente</string>
     <string name="next_station">Station suivante</string>
 
     <string name="opt_diag">Mode diagnostic des métadonnées</string>
-    <string name="opt_diag_sub">Chaque champ de métadonnées reçoit son nom polonais au lieu de sa vraie valeur. Utile pour le positionnement sur l'AID.</string>
+    <string name="opt_diag_sub">Chaque champ de métadonnées reçoit son nom polonais au lieu de sa vraie valeur. Utile pour le positionnement sur l\'AID.</string>
     <string name="opt_diag_api">Ajouter le nom du champ API</string>
     <string name="opt_diag_api_sub">Par exemple « TITRE‹title› » au lieu de « TITRE ».</string>
 
