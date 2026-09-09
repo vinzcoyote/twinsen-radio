@@ -537,4 +537,3 @@ data class BufferProfile(
             ALL.getOrElse(index) { ALL[1] }
     }
 }
-```
