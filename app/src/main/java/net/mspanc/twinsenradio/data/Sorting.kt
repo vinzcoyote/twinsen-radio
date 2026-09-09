@@ -9,10 +9,10 @@ package net.mspanc.twinsenradio.data
  * listen to naturally ends up at the top.
  */
 enum class StationSort(val label: String) {
-    DEFAULT("Kolejność wbudowana"),
-    MOST_PLAYED("Najczęściej słuchane"),
-    NAME("Alfabetycznie"),
-    GENRE("Według gatunku");
+    DEFAULT("Ordre intégré"),
+    MOST_PLAYED("Les plus écoutées"),
+    NAME("Alphabétique"),
+    GENRE("Par genre");
 
     companion object {
         val LABELS get() = entries.map { it.label }
@@ -27,10 +27,10 @@ enum class StationSort(val label: String) {
  * votes, which does a decent job of filtering out dead and random entries.
  */
 enum class DiscoverSort(val label: String) {
-    POPULARITY("Popularność"),
-    NAME("Alfabetycznie"),
-    BITRATE("Jakość strumienia"),
-    COUNTRY("Kraj");
+    POPULARITY("Popularité"),
+    NAME("Alphabétique"),
+    BITRATE("Qualité du flux"),
+    COUNTRY("Pays");
 
     companion object {
         val LABELS get() = entries.map { it.label }
