@@ -3,6 +3,8 @@ package net.mspanc.twinsenradio.ui
 import android.content.ComponentName
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -38,20 +40,38 @@ class NowPlayingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         b = ActivityNowPlayingBinding.inflate(layoutInflater)
         setContentView(b.root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(b.root) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+
+            view.setPadding(
+                view.paddingLeft,
+                systemBars.top,
+                view.paddingRight,
+                maxOf(systemBars.bottom, ime.bottom)
+            )
+
+            insets
+        }
 
         repo = StationRepository.get(this)
         prefs = Prefs(this)
         metadata = MetadataFactory(this, prefs)
 
         b.toolbar.setNavigationOnClickListener { finish() }
+
         b.playPause.setOnClickListener {
             val c = controller ?: return@setOnClickListener
             if (c.isPlaying) c.pause() else c.play()
         }
+
         b.prev.setOnClickListener { step(-1) }
         b.next.setOnClickListener { step(+1) }
+
         b.favourite.setOnClickListener {
             val id = PlaybackStatusBus.stationId.value ?: return@setOnClickListener
             prefs.toggleFavourite(id)
@@ -67,24 +87,43 @@ class NowPlayingActivity : AppCompatActivity() {
             PlaybackStatusBus.quality,
             Prefs.favouritesFlow
         ).forEach { flow ->
-            lifecycleScope.launch { flow.collect { render() } }
+            lifecycleScope.launch {
+                flow.collect {
+                    render()
+                }
+            }
         }
     }
 
     override fun onStart() {
         super.onStart()
-        val token = SessionToken(this, ComponentName(this, RadioService::class.java))
+
+        val token = SessionToken(
+            this,
+            ComponentName(this, RadioService::class.java)
+        )
+
         val future = MediaController.Builder(this, token).buildAsync()
+
         future.addListener({
             controller = future.get().also { c ->
                 c.addListener(object : Player.Listener {
+
                     override fun onIsPlayingChanged(isPlaying: Boolean) = render()
-                    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = render()
-                    // without this, cover art found mid-track would never appear -
-                    // metadata changes separately from playback position
-                    override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) = render()
+
+                    override fun onMediaItemTransition(
+                        mediaItem: MediaItem?,
+                        reason: Int
+                    ) = render()
+
+                    // Without this, cover art found mid-track would never appear -
+                    // metadata changes separately from playback position.
+                    override fun onMediaMetadataChanged(
+                        mediaMetadata: MediaMetadata
+                    ) = render()
                 })
             }
+
             render()
         }, MoreExecutors.directExecutor())
     }
@@ -104,76 +143,132 @@ class NowPlayingActivity : AppCompatActivity() {
      *
      * Only visible when we actually know the bitrate - from the directory or,
      * for "bare" URLs without that declaration, from the live decoder. Without
-     * it there's nothing to show, so the button disappears instead of showing a placeholder.
+     * it there's nothing to show, so the button disappears instead of showing
+     * a placeholder.
      */
     private fun renderBitrate(station: Station?) {
         val variants = station?.variants().orEmpty()
-        val chosen = station?.let { prefs.selectedStream(it.id) }
-            ?: variants.maxByOrNull { it.kbps }?.url
-        val current = variants.firstOrNull { it.url == chosen } ?: variants.firstOrNull()
-        val label = current?.kbpsLabel(PlaybackStatusBus.qualityKbps.value)
+
+        val chosen = station?.let {
+            prefs.selectedStream(it.id)
+        } ?: variants.maxByOrNull {
+            it.kbps
+        }?.url
+
+        val current = variants.firstOrNull {
+            it.url == chosen
+        } ?: variants.firstOrNull()
+
+        val label = current?.kbpsLabel(
+            PlaybackStatusBus.qualityKbps.value
+        )
+
         if (station == null || label == null) {
             b.bitrate.visibility = android.view.View.GONE
             return
         }
+
         b.bitrate.visibility = android.view.View.VISIBLE
         b.bitrate.text = label
+
         b.bitrate.setOnClickListener {
-            StreamPicker.show(this, station, prefs) { renderBitrate(station) }
+            StreamPicker.show(this, station, prefs) {
+                renderBitrate(station)
+            }
         }
     }
 
     /** Jump to the neighbouring station in the same list, with wraparound. */
     private fun step(delta: Int) {
         val all = repo.all()
+
         if (all.isEmpty()) return
+
         val currentId = PlaybackStatusBus.stationId.value
-        val index = all.indexOfFirst { it.id == currentId }
-        val target = if (index < 0) 0 else ((index + delta) % all.size + all.size) % all.size
+
+        val index = all.indexOfFirst {
+            it.id == currentId
+        }
+
+        val target = if (index < 0) {
+            0
+        } else {
+            ((index + delta) % all.size + all.size) % all.size
+        }
+
         play(all[target])
     }
 
     private fun play(station: Station) {
         val c = controller ?: return
-        c.setMediaItem(MediaItem.Builder().setMediaId(station.mediaId).build())
+
+        c.setMediaItem(
+            MediaItem.Builder()
+                .setMediaId(station.mediaId)
+                .build()
+        )
+
         c.prepare()
         c.play()
     }
 
     private fun render() {
-        val station = PlaybackStatusBus.stationId.value?.let { repo.byId(it) }
+        val station = PlaybackStatusBus.stationId.value?.let {
+            repo.byId(it)
+        }
+
         val now = PlaybackStatusBus.nowPlaying.value
 
-        b.stationName.text = station?.name ?: getString(R.string.nothing_playing)
+        b.stationName.text =
+            station?.name ?: getString(R.string.nothing_playing)
 
         // Same logic as in the car metadata: a real track, station slogan, or
         // an ad - never a duplicated station name.
         when {
             now?.isRealSong == true -> {
                 val info = PlaybackStatusBus.trackInfo.value
-                // Artist only - the album goes separately, on its own line below
-                b.songArtist.text = MetadataFactory.composeArtistOnly(now, info)
-                val album = info?.albumLabel(prefs.enrichWithYear).orEmpty()
+
+                // Artist only - the album goes separately, on its own line below.
+                b.songArtist.text =
+                    MetadataFactory.composeArtistOnly(now, info)
+
+                val album =
+                    info?.albumLabel(prefs.enrichWithYear).orEmpty()
+
                 b.songAlbum.text = album
-                b.songAlbum.visibility = if (album.isBlank()) android.view.View.GONE else android.view.View.VISIBLE
+
+                b.songAlbum.visibility =
+                    if (album.isBlank()) {
+                        android.view.View.GONE
+                    } else {
+                        android.view.View.VISIBLE
+                    }
+
                 // Same processing as in the car: corrected order and spelling.
-                b.songTitle.text = MetadataFactory.displayTitle(now, info)
+                b.songTitle.text =
+                    MetadataFactory.displayTitle(now, info)
             }
+
             now?.slogan != null -> {
                 b.songTitle.text = now.slogan
                 b.songArtist.text = ""
                 b.songAlbum.visibility = android.view.View.GONE
             }
+
             now?.isAd == true -> {
                 val seconds = now.adDurationMs / 1000
-                b.songTitle.text = if (seconds > 0) {
-                    getString(R.string.ad_with_length, seconds)
-                } else {
-                    getString(R.string.ad)
-                }
+
+                b.songTitle.text =
+                    if (seconds > 0) {
+                        getString(R.string.ad_with_length, seconds)
+                    } else {
+                        getString(R.string.ad)
+                    }
+
                 b.songArtist.text = ""
                 b.songAlbum.visibility = android.view.View.GONE
             }
+
             else -> {
                 b.songTitle.text = ""
                 b.songArtist.text = ""
@@ -181,44 +276,95 @@ class NowPlayingActivity : AppCompatActivity() {
             }
         }
 
-        val isFav = station != null && station.id in prefs.favourites
-        b.favourite.setImageResource(
-            if (isFav) R.drawable.ic_star_filled else R.drawable.ic_star_outline
-        )
-        b.favourite.contentDescription =
-            getString(if (isFav) R.string.fav_remove else R.string.fav_add)
+        val isFav =
+            station != null && station.id in prefs.favourites
 
-        b.diagnosticBanner.visibility =
-            if (prefs.diagnosticMode) android.view.View.VISIBLE else android.view.View.GONE
-        // We take the cover art from our own bus, not from session metadata.
-        // The session may hold a clock instead of cover art - that's a feature
-        // exclusively for the car screen; on the phone it should always be cover art or the station logo.
-        ArtworkLoader.into(
-            lifecycleScope,
-            PlaybackStatusBus.coverArtUrl.value?.let { android.net.Uri.parse(it) },
-            station?.let { metadata.logoDisplayUri(it) },
-            station?.let { metadata.logoResId(it) } ?: R.drawable.logo_placeholder,
-            b.art
-        )
-        val statusText = getString(
-            when (PlaybackStatusBus.status.value) {
-                PlaybackStatusBus.Status.CONNECTING -> R.string.status_connecting
-                PlaybackStatusBus.Status.BUFFERING -> R.string.status_buffering
-                PlaybackStatusBus.Status.PLAYING -> R.string.status_playing
-                PlaybackStatusBus.Status.RECONNECTING -> R.string.status_reconnecting
-                PlaybackStatusBus.Status.WAITING_FOR_NETWORK -> R.string.status_waiting_network
-                PlaybackStatusBus.Status.STATION_UNREACHABLE -> R.string.status_unreachable
-                PlaybackStatusBus.Status.IDLE -> R.string.status_idle
+        b.favourite.setImageResource(
+            if (isFav) {
+                R.drawable.ic_star_filled
+            } else {
+                R.drawable.ic_star_outline
             }
         )
-        // We only know the quality after the first frame from the decoder, so we
-        // only append it once there's actually something to append.
+
+        b.favourite.contentDescription =
+            getString(
+                if (isFav) {
+                    R.string.fav_remove
+                } else {
+                    R.string.fav_add
+                }
+            )
+
+        b.diagnosticBanner.visibility =
+            if (prefs.diagnosticMode) {
+                android.view.View.VISIBLE
+            } else {
+                android.view.View.GONE
+            }
+
+        // We take the cover art from our own bus, not from session metadata.
+        // The session may hold a clock instead of cover art - that's a feature
+        // exclusively for the car screen; on the phone it should always be
+        // cover art or the station logo.
+        ArtworkLoader.into(
+            lifecycleScope,
+            PlaybackStatusBus.coverArtUrl.value?.let {
+                android.net.Uri.parse(it)
+            },
+            station?.let {
+                metadata.logoDisplayUri(it)
+            },
+            station?.let {
+                metadata.logoResId(it)
+            } ?: R.drawable.logo_placeholder,
+            b.art
+        )
+
+        val statusText = getString(
+            when (PlaybackStatusBus.status.value) {
+                PlaybackStatusBus.Status.CONNECTING ->
+                    R.string.status_connecting
+
+                PlaybackStatusBus.Status.BUFFERING ->
+                    R.string.status_buffering
+
+                PlaybackStatusBus.Status.PLAYING ->
+                    R.string.status_playing
+
+                PlaybackStatusBus.Status.RECONNECTING ->
+                    R.string.status_reconnecting
+
+                PlaybackStatusBus.Status.WAITING_FOR_NETWORK ->
+                    R.string.status_waiting_network
+
+                PlaybackStatusBus.Status.STATION_UNREACHABLE ->
+                    R.string.status_unreachable
+
+                PlaybackStatusBus.Status.IDLE ->
+                    R.string.status_idle
+            }
+        )
+
+        // We only know the quality after the first frame from the decoder,
+        // so we only append it once there's actually something to append.
         val quality = PlaybackStatusBus.quality.value
-        b.status.text = if (quality.isNullOrBlank()) statusText else "$statusText · $quality"
+
+        b.status.text =
+            if (quality.isNullOrBlank()) {
+                statusText
+            } else {
+                "$statusText · $quality"
+            }
+
         renderBitrate(station)
+
         b.playPause.setImageResource(
-            if (controller?.isPlaying == true) android.R.drawable.ic_media_pause
-            else android.R.drawable.ic_media_play
+            if (controller?.isPlaying == true) {
+                android.R.drawable.ic_media_pause
+            } else {
+                android.R.drawable.ic_media_play
+            }
         )
     }
 }
