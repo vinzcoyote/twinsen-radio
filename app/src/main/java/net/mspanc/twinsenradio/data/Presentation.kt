@@ -141,4 +141,3 @@ data class Presentation(
         )
     }
 }
-```
