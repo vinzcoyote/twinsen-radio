@@ -10,6 +10,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import net.mspanc.twinsenradio.R
@@ -42,6 +44,21 @@ class StationInfoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         b = ActivityStationInfoBinding.inflate(layoutInflater)
         setContentView(b.root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(b.root) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+
+            view.setPadding(
+                view.paddingLeft,
+                systemBars.top,
+                view.paddingRight,
+                maxOf(systemBars.bottom, ime.bottom)
+            )
+
+            insets
+        }
+
         prefs = Prefs(this)
 
         b.toolbar.setNavigationOnClickListener { finish() }
@@ -62,7 +79,7 @@ class StationInfoActivity : AppCompatActivity() {
         station = Station(
             id = intent.getStringExtra(EXTRA_ID).orEmpty(),
             name = name,
-            genre = intent.getStringExtra(EXTRA_GENRE).orEmpty().ifBlank { "Z sieci" },
+            genre = intent.getStringExtra(EXTRA_GENRE).orEmpty().ifBlank { "Internet" },
             stream = stream,
             // Name of a built-in resource; stations from the catalog have a URL instead
             logo = intent.getStringExtra(EXTRA_LOGO_NAME),
