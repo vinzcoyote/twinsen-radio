@@ -35,7 +35,7 @@ class LoadDiagnostics(
     ) {
         Log.i(
             TAG,
-            "format dzwieku: ${format.sampleMimeType} codecs=${format.codecs} " +
+            "audio format: ${format.sampleMimeType} codecs=${format.codecs} " +
                 "bitrate=${format.bitrate} sr=${format.sampleRate} ch=${format.channelCount}"
         )
         onAudioFormat(format)
@@ -70,7 +70,7 @@ class LoadDiagnostics(
     ) {
         Log.w(
             TAG,
-            "BLAD pobierania (${loadEventInfo.uri}) po ${loadEventInfo.loadDurationMs} ms, " +
+            "LOAD ERROR (${loadEventInfo.uri}) after ${loadEventInfo.loadDurationMs} ms, " +
                 "pobrano ${loadEventInfo.bytesLoaded} B, anulowane=$wasCanceled: " +
                 "${error.javaClass.simpleName}: ${error.message}"
         )
