@@ -266,59 +266,6 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- ============ Listy w Android Auto ============ -->
-                <com.google.android.material.card.MaterialCardView
-                    style="@style/Widget.Material3.CardView.Filled"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            style="@style/SectionHeader"
-                            android:text="@string/opt_sec_browse" />
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:hint="@string/opt_style_browsable">
-
-                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                                android:id="@+id/ddBrowsable"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:editable="false"
-                                android:inputType="none" />
-
-                        </com.google.android.material.textfield.TextInputLayout>
-
-                        <com.google.android.material.textfield.TextInputLayout
-                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="12dp"
-                            android:hint="@string/opt_style_playable">
-
-                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                                android:id="@+id/ddPlayable"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:editable="false"
-                                android:inputType="none" />
-
-                        </com.google.android.material.textfield.TextInputLayout>
-
-                    </LinearLayout>
-
-                </com.google.android.material.card.MaterialCardView>
-
                 <!-- ============ Strumień ============ -->
                 <com.google.android.material.card.MaterialCardView
                     style="@style/Widget.Material3.CardView.Filled"
