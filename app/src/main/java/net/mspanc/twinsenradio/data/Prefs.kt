@@ -235,7 +235,7 @@ class Prefs(context: Context) {
             Station(
                 id = o.getString("id"),
                 name = o.getString("name"),
-                genre = o.optString("genre", "Z sieci"),
+                genre = o.optString("genre", "Internet"),
                 stream = o.getString("stream"),
                 streams = variants,
                 logoUrl = o.optString("logoUrl").ifBlank { null },
