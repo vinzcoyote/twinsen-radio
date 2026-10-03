@@ -76,6 +76,6 @@ object ConnectionLog {
             // A simple cap so the log doesn't grow forever over the months
             if (file.length() > MAX_BYTES) file.writeText("")
             file.appendText("[${LocalDateTime.now().format(STAMP)}] $text")
-        }.onFailure { Log.w("ConnectionLog", "nie udalo sie zapisac: ${it.message}") }
+        }.onFailure { Log.w("ConnectionLog", "failed to save: ${it.message}") }
     }
 }
