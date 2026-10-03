@@ -16,7 +16,6 @@ import net.mspanc.twinsenradio.data.ArtworkMode
 import net.mspanc.twinsenradio.data.BufferProfile
 import net.mspanc.twinsenradio.data.ClockColors
 import net.mspanc.twinsenradio.data.ClockFace
-import net.mspanc.twinsenradio.data.ContentStyle
 import net.mspanc.twinsenradio.data.Line
 import net.mspanc.twinsenradio.data.LineContent
 import net.mspanc.twinsenradio.data.Prefs
@@ -87,8 +86,6 @@ class SettingsActivity : AppCompatActivity() {
         renderLegend()
 
         // --- the rest ----------------------------------------------------------
-        bind(b.ddBrowsable, ContentStyle.LABELS, ContentStyle.valueToIndex(prefs.browsableStyle))
-        bind(b.ddPlayable, ContentStyle.LABELS, ContentStyle.valueToIndex(prefs.playableStyle))
         bind(b.ddBuffer, BufferProfile.ALL.map { it.label }, prefs.bufferProfile)
         b.etM3u.setText(prefs.userM3uUrls.joinToString("\n"))
         renderHidden()
@@ -183,8 +180,6 @@ class SettingsActivity : AppCompatActivity() {
         prefs.diagnosticMode = b.swDiag.isChecked
         prefs.diagnosticShowApiName = b.swDiagApi.isChecked
 
-        prefs.browsableStyle = ContentStyle.indexToValue(pick(b.ddBrowsable))
-        prefs.playableStyle = ContentStyle.indexToValue(pick(b.ddPlayable))
         prefs.bufferProfile = pick(b.ddBuffer)
         prefs.userM3uUrls = b.etM3u.text?.toString().orEmpty().lines()
 
