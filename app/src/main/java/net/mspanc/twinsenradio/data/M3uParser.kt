@@ -38,7 +38,7 @@ object M3uParser {
                     out += Station(
                         id = "u_${sourceTag}_${seq++}",
                         name = name,
-                        genre = pendingGroup ?: "Z listy M3U",
+                        genre = pendingGroup ?: "Liste M3U",
                         stream = line,
                         logoUrl = pendingLogo,
                         source = Station.Source.USER_M3U,
