@@ -126,7 +126,7 @@ class RadioService : MediaLibraryService() {
 
     private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
-            Prefs.KEY_STYLE_BROWSABLE, Prefs.KEY_STYLE_PLAYABLE, Prefs.KEY_M3U -> {
+            Prefs.KEY_AA_FAVOURITES_GRID, Prefs.KEY_AA_ALL_GRID, Prefs.KEY_M3U -> {
                 session.notifyChildrenChanged(NODE_ROOT, Int.MAX_VALUE, null)
                 BROWSE_NODES.forEach { session.notifyChildrenChanged(it, Int.MAX_VALUE, null) }
             }
