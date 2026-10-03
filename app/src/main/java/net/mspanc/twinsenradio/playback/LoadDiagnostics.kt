@@ -46,7 +46,7 @@ class LoadDiagnostics(
         loadEventInfo: LoadEventInfo,
         mediaLoadData: MediaLoadData
     ) {
-        Log.i(TAG, "start pobierania: ${loadEventInfo.dataSpec.uri}")
+        Log.i(TAG, "load started: ${loadEventInfo.dataSpec.uri}")
     }
 
     override fun onLoadCompleted(
@@ -56,7 +56,7 @@ class LoadDiagnostics(
     ) {
         Log.i(
             TAG,
-            "zakonczone: ${loadEventInfo.bytesLoaded} B w ${loadEventInfo.loadDurationMs} ms " +
+            "completed: ${loadEventInfo.bytesLoaded} B in ${loadEventInfo.loadDurationMs} ms " +
                 "(${loadEventInfo.uri})"
         )
     }
@@ -71,7 +71,7 @@ class LoadDiagnostics(
         Log.w(
             TAG,
             "LOAD ERROR (${loadEventInfo.uri}) after ${loadEventInfo.loadDurationMs} ms, " +
-                "pobrano ${loadEventInfo.bytesLoaded} B, anulowane=$wasCanceled: " +
+                "loaded ${loadEventInfo.bytesLoaded} B, canceled=$wasCanceled: " +
                 "${error.javaClass.simpleName}: ${error.message}"
         )
     }
@@ -81,7 +81,7 @@ class LoadDiagnostics(
         loadEventInfo: LoadEventInfo,
         mediaLoadData: MediaLoadData
     ) {
-        Log.i(TAG, "anulowano pobieranie: ${loadEventInfo.uri}")
+        Log.i(TAG, "load canceled: ${loadEventInfo.uri}")
     }
 
     private companion object {
