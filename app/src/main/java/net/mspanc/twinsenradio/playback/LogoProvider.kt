@@ -105,7 +105,7 @@ class LogoProvider : ContentProvider() {
         }
         file.outputStream().use { out -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, out) }
         file
-    }.onFailure { Log.w(TAG, "nie udalo sie przygotowac logo dla $uri: ${it.message}") }
+    }.onFailure { Log.w(TAG, "failed to prepare logo for $uri: ${it.message}") }
         .getOrNull()
 
     companion object {
