@@ -148,7 +148,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun renderHidden() {
         val repo = StationRepository.get(this)
         val hidden = prefs.hidden
-        if (hidden.isEmpty()) {
+        if (repo.builtIn.isEmpty() || hidden.isEmpty()) {
             b.hiddenBox.visibility = View.GONE
             return
         }
