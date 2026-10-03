@@ -49,7 +49,7 @@
     <string name="info_streams_note">Par défaut, la version de meilleure qualité est utilisée. Le choix est mémorisé pour cette station.</string>
 
     <string name="info_custom_stream">Adresse de flux personnalisée</string>
-    <string name="info_custom_stream_note">L\'adresse saisie ici est prioritaire sur celles ci-dessus — elle fonctionne également pour les stations intégrées. Laissez le champ vide pour revenir au choix de la liste.</string>
+    <string name="info_custom_stream_note">L\'adresse saisie ici est prioritaire sur celles ci-dessus. Laissez le champ vide pour revenir au choix de la liste.</string>
     <string name="info_change_logo">Modifier le logo de la station…</string>
     <string name="info_logo_changed">Logo modifié</string>
     <string name="info_saved">Enregistré</string>
@@ -96,13 +96,13 @@
     <string name="opt_clock_face">À la place de la pochette</string>
     <string name="aid_waiting_network">En attente du réseau…</string>
 
-    <string name="opt_m3u_sub">Une adresse par ligne. Le parseur lit #EXTINF avec tvg-logo et group-title.</string>
+    <string name="opt_m3u_sub">Une adresse par ligne. Le parseur lit #EXTINF avec tvg-logo, group-title et dab-mot.</string>
     <string name="opt_hidden_label">Retirées de la liste : %1$s</string>
     <string name="opt_restore_hidden">Tout restaurer</string>
     <string name="opt_restored_toast">Stations masquées restaurées</string>
 
     <string name="opt_enrich">Ajouter l\'année à l\'album</string>
-    <string name="opt_enrich_sub">L\'album du catalogue iTunes (par exemple « Księga ») est toujours affiché lorsqu\'il est connu. Cette option détermine uniquement si l\'année est ajoutée — par exemple « Księga [2024] » au lieu de « Księga ».</string>
+    <string name="opt_enrich_sub">L\'album du catalogue iTunes est toujours affiché lorsqu\'il est connu. Cette option détermine uniquement si l\'année est ajoutée — par exemple « Album [2024] » au lieu de « Album ».</string>
 
     <string name="ad">Publicité</string>
     <string name="ad_with_length">Publicité · %1$d s</string>
@@ -115,7 +115,7 @@
     <string name="next_station">Station suivante</string>
 
     <string name="opt_diag">Mode diagnostic des métadonnées</string>
-    <string name="opt_diag_sub">Chaque champ de métadonnées reçoit son nom polonais au lieu de sa vraie valeur. Utile pour le positionnement sur l\'AID.</string>
+    <string name="opt_diag_sub">Chaque champ de métadonnées reçoit une étiquette de diagnostic au lieu de sa vraie valeur. Utile pour identifier les champs affichés sur l\'AID.</string>
     <string name="opt_diag_api">Ajouter le nom du champ API</string>
     <string name="opt_diag_api_sub">Par exemple « TITRE‹title› » au lieu de « TITRE ».</string>
 
