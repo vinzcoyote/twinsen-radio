@@ -311,7 +311,7 @@ class MetadataFactory(private val context: Context, private val prefs: Prefs) {
 
         private val CLOCK_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-        const val AD_LABEL = "Reklama"
+        const val AD_LABEL = "Publicité"
 
         /**
          * The artist line, supplemented with the release when needed.
