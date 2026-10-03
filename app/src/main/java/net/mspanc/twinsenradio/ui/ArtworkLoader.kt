@@ -217,8 +217,8 @@ object ArtworkLoader {
     private const val LOGO_INSET_FRACTION = 0.055f
 
     // Neutral backdrops chosen to give good contrast without tinting the logo.
-    private const val LIGHT_BACKDROP = 0xFFF4F4F4.toInt()
-    private const val DARK_BACKDROP = 0xFF24272B.toInt()
+    private val LIGHT_BACKDROP = 0xFFF4F4F4.toInt()
+    private val DARK_BACKDROP = 0xFF24272B.toInt()
 
     private val TAG_KEY = "artwork_url".hashCode()
 }
