@@ -7,6 +7,8 @@ import android.widget.ArrayAdapter
 import android.widget.ImageView
 import com.google.android.material.chip.Chip
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
@@ -66,6 +68,20 @@ class DiscoverActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         b = ActivityDiscoverBinding.inflate(layoutInflater)
         setContentView(b.root)
+
+        ViewCompat.setOnApplyWindowInsetsListener(b.root) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
+
+            view.setPadding(
+                view.paddingLeft,
+                systemBars.top,
+                view.paddingRight,
+                maxOf(systemBars.bottom, ime.bottom)
+            )
+
+            insets
+        }
 
         prefs = Prefs(this)
         metadata = MetadataFactory(this, prefs)
