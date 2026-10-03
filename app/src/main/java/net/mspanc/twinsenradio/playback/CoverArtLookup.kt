@@ -60,7 +60,7 @@ object CoverArtLookup {
          */
         fun albumLabel(includeYear: Boolean = true): String? {
             val name = when {
-                isSingle -> "singiel"
+                isSingle -> "single"
                 !album.isNullOrBlank() -> TextCase.tidy(album)
                 else -> return null
             }
@@ -140,7 +140,7 @@ object CoverArtLookup {
         synchronized(cache) { if (cache.containsKey(key)) return@withContext cache[key] }
 
         var result = runCatching { query("$a $t".trim()) }
-            .onFailure { Log.w(TAG, "iTunes nie odpowiedzial: ${it.message}") }
+            .onFailure { Log.w(TAG, "iTunes did not respond: ${it.message}") }
             .getOrNull()
 
         // iTunes has poor coverage of older Polish repertoire - "Czesław
@@ -149,12 +149,12 @@ object CoverArtLookup {
         // doesn't know the track.
         if (result == null && a.isNotEmpty()) {
             result = runCatching { queryMusicBrainz(a, t) }
-                .onFailure { Log.w(TAG, "MusicBrainz nie odpowiedzial: ${it.message}") }
+                .onFailure { Log.w(TAG, "MusicBrainz did not respond: ${it.message}") }
                 .getOrNull()
         }
 
         synchronized(cache) { cache[key] = result }
-        Log.i(TAG, "'$a - $t' -> okladka=${result?.artworkUrl != null} album='${result?.albumLabel()}'")
+        Log.i(TAG, "'$a - $t' -> artwork=${result?.artworkUrl != null} album='${result?.albumLabel()}'")
         result
     }
 
