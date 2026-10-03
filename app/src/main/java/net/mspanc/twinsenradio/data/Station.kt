@@ -34,7 +34,12 @@ data class Station(
     val streams: List<StreamVariant> = emptyList(),
     val logo: String? = null,
     val logoUrl: String? = null,
-    val source: Source = Source.BUILT_IN
+    val source: Source = Source.BUILT_IN,
+    /**
+     * Optional DAB MOT slideshow URL supplied by an extended M3U entry.
+     * Used only as artwork fallback after the online cover-art lookup fails.
+     */
+    val dabMotUrl: String? = null
 ) {
     enum class Source {
         BUILT_IN,
