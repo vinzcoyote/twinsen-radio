@@ -680,7 +680,12 @@ class RadioService : MediaLibraryService() {
                     val mot = service.optJSONObject("mot") ?: return@runCatching null
                     val lastChange = mot.optLong("lastchange", 0L)
                     val time = mot.optLong("time", 0L)
-                    return@runCatching maxOf(lastChange, time).takeIf { it > 0L }
+
+                    // lastchange only moves when the MOT image itself changes.
+                    // mot.time can be refreshed even while the same image remains active,
+                    // so using maxOf(lastchange, time) caused needless reloads/flicker.
+                    return@runCatching (if (lastChange > 0L) lastChange else time)
+                        .takeIf { it > 0L }
                 }
                 null
             } finally {
