@@ -9,7 +9,7 @@ package net.mspanc.twinsenradio.data
  * listen to naturally ends up at the top.
  */
 enum class StationSort(val label: String) {
-    DEFAULT("Ordre intégré"),
+    DEFAULT("Ordre de la liste"),
     MOST_PLAYED("Les plus écoutées"),
     NAME("Alphabétique"),
     GENRE("Par genre");
