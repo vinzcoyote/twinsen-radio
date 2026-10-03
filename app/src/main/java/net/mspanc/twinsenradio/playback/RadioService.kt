@@ -39,12 +39,15 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import net.mspanc.twinsenradio.data.BufferProfile
 import net.mspanc.twinsenradio.data.ContentStyle
 import net.mspanc.twinsenradio.data.Prefs
 import net.mspanc.twinsenradio.data.Station
 import net.mspanc.twinsenradio.data.StationRepository
 import net.mspanc.twinsenradio.ui.MainActivity
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * Playback service that is also the browse tree source for Android Auto.
@@ -70,7 +73,10 @@ class RadioService : MediaLibraryService() {
     private var clockTick: Runnable? = null
     private var lastIcyAtMs = 0L
 
-    /** Cover art found for the current track; null = we show the station logo. */
+    /**
+     * Artwork currently exposed to the phone and Android Auto.
+     * Priority: online track cover -> DAB MOT slideshow -> station logo (null here).
+     */
     @Volatile
     private var coverArtUrl: String? = null
 
@@ -533,13 +539,12 @@ class RadioService : MediaLibraryService() {
         val generation = ++coverGeneration
         coverRevertJob?.cancel()
 
-        fun applyIfCurrent(info: CoverArtLookup.TrackInfo?) {
+        fun applyIfCurrent(info: CoverArtLookup.TrackInfo?, artworkUrl: String?) {
             if (generation != coverGeneration) return
-            val url = info?.artworkUrl
-            if (coverArtUrl == url && trackInfo == info) return
-            coverArtUrl = url
+            if (coverArtUrl == artworkUrl && trackInfo == info) return
+            coverArtUrl = artworkUrl
             trackInfo = info
-            PlaybackStatusBus.setCoverArt(url)
+            PlaybackStatusBus.setCoverArt(artworkUrl)
             PlaybackStatusBus.setTrackInfo(info)
             refreshCurrentMetadata(force = true, now = PlaybackStatusBus.nowPlaying.value)
             // We now know the track length - recompute the moment the description goes stale
@@ -547,21 +552,81 @@ class RadioService : MediaLibraryService() {
         }
 
         coverTrackKey = key
-        if (coverArtUrl != null) {
+        if (coverArtUrl != null || trackInfo != null) {
             coverArtUrl = null
             trackInfo = null
             PlaybackStatusBus.setCoverArt(null)
             PlaybackStatusBus.setTrackInfo(null)
         }
 
-        // An ad or the station's own slogan - nothing to look up in the catalog.
-        if (key == null) return
+        val station = player.currentMediaItem?.mediaId?.let { repo.byMediaId(it) }
+
+        // No real song means there is nothing sensible to query in iTunes/MusicBrainz,
+        // but a DAB slideshow may still carry a useful programme image.
+        if (key == null) {
+            scope.launch {
+                val mot = findAvailableDabMot(station?.dabMotUrl, generation)
+                if (mot != null) applyIfCurrent(null, mot)
+            }
+            return
+        }
 
         scope.launch {
             val info = CoverArtLookup.find(now!!.artist, now.songTitle)
             if (generation != coverGeneration) return@launch
-            applyIfCurrent(info)
+
+            // Internet artwork always wins. Keep TrackInfo even when it only contains
+            // album/year data but no image.
+            val onlineArt = info?.artworkUrl
+            applyIfCurrent(info, onlineArt)
+            if (onlineArt != null) return@launch
+
+            // No catalogue artwork: use the live DAB MOT slideshow if the endpoint
+            // actually has an image. If it doesn't, artworkUrl stays null and the
+            // existing station-logo fallback remains in charge.
+            val mot = findAvailableDabMot(station?.dabMotUrl, generation)
+            if (mot != null) applyIfCurrent(info, mot)
         }
+    }
+
+    /**
+     * Returns a cache-busted MOT URL only when it really answers.
+     *
+     * DAB slides can arrive a little after StreamTitle, so we retry briefly.
+     * Generation checks make the probe stop as soon as the station/track changes.
+     */
+    private suspend fun findAvailableDabMot(url: String?, generation: Int): String? {
+        val base = url?.trim()?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
+            ?: return null
+
+        val delays = longArrayOf(0L, 2_500L, 5_000L)
+        for (waitMs in delays) {
+            if (waitMs > 0) delay(waitMs)
+            if (generation != coverGeneration) return null
+            if (dabMotExists(base)) {
+                val separator = if ('?' in base) '&' else '?'
+                return "$base${separator}v=${System.currentTimeMillis()}"
+            }
+        }
+        return null
+    }
+
+    private suspend fun dabMotExists(url: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 3_000
+                readTimeout = 3_000
+                instanceFollowRedirects = true
+                setRequestProperty("User-Agent", StationRepository.USER_AGENT)
+            }
+            try {
+                conn.responseCode == HttpURLConnection.HTTP_OK &&
+                    conn.contentType.orEmpty().startsWith("image/", ignoreCase = true)
+            } finally {
+                conn.disconnect()
+            }
+        }.getOrDefault(false)
     }
 
     /**
