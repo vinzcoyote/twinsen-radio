@@ -46,6 +46,7 @@ import net.mspanc.twinsenradio.data.Prefs
 import net.mspanc.twinsenradio.data.Station
 import net.mspanc.twinsenradio.data.StationRepository
 import net.mspanc.twinsenradio.ui.MainActivity
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -83,6 +84,12 @@ class RadioService : MediaLibraryService() {
     /** What the catalog knows about the current track - release, year, cover art. */
     @Volatile
     private var trackInfo: CoverArtLookup.TrackInfo? = null
+
+    /**
+     * Last DAB MOT revision seen for the currently tuned station.
+     * Kept across track changes so we can tell an old slide from a genuinely new one.
+     */
+    private var lastDabMotRevision: Long? = null
 
     /** Increments on every track change - filters out stale search results. */
     private var coverGeneration = 0
@@ -512,6 +519,7 @@ class RadioService : MediaLibraryService() {
         coverTrackKey = null
         coverArtUrl = null
         trackInfo = null
+        lastDabMotRevision = null
         PlaybackStatusBus.setCoverArt(null)
         PlaybackStatusBus.setTrackInfo(null)
     }
@@ -565,8 +573,9 @@ class RadioService : MediaLibraryService() {
         // but a DAB slideshow may still carry a useful programme image.
         if (key == null) {
             scope.launch {
-                val mot = findAvailableDabMot(station?.dabMotUrl, generation)
-                if (mot != null) applyIfCurrent(null, mot)
+                monitorDabMot(station?.dabMotUrl, generation) { mot ->
+                    applyIfCurrent(null, mot)
+                }
             }
             return
         }
@@ -581,52 +590,103 @@ class RadioService : MediaLibraryService() {
             applyIfCurrent(info, onlineArt)
             if (onlineArt != null) return@launch
 
-            // No catalogue artwork: use the live DAB MOT slideshow if the endpoint
-            // actually has an image. If it doesn't, artworkUrl stays null and the
-            // existing station-logo fallback remains in charge.
-            val mot = findAvailableDabMot(station?.dabMotUrl, generation)
-            if (mot != null) applyIfCurrent(info, mot)
+            // No catalogue artwork: keep watching the DAB slideshow for the whole
+            // track. welle.io often still exposes the previous slide for a few
+            // seconds after StreamTitle changes; mot.lastchange tells us exactly
+            // when a genuinely new slide arrives.
+            monitorDabMot(station?.dabMotUrl, generation) { mot ->
+                applyIfCurrent(info, mot)
+            }
         }
     }
 
     /**
-     * Returns a cache-busted MOT URL only when it really answers.
+     * Watches welle.io's mux metadata while DAB MOT is the active artwork fallback.
      *
-     * DAB slides can arrive a little after StreamTitle, so we retry briefly.
-     * Generation checks make the probe stop as soon as the station/track changes.
+     * /mux.json exposes service.mot.lastchange. Polling that small JSON document is
+     * much cheaper and more reliable than downloading /slide/<sid> repeatedly.
+     * Whenever the revision changes we publish a cache-busted slide URL, which
+     * forces both the phone UI and Android Auto to fetch the new image.
      */
-    private suspend fun findAvailableDabMot(url: String?, generation: Int): String? {
+    private suspend fun monitorDabMot(
+        url: String?,
+        generation: Int,
+        onChanged: (String) -> Unit
+    ) {
         val base = url?.trim()?.takeIf { it.startsWith("http://") || it.startsWith("https://") }
-            ?: return null
+            ?: return
 
-        val delays = longArrayOf(0L, 2_500L, 5_000L)
-        for (waitMs in delays) {
-            if (waitMs > 0) delay(waitMs)
-            if (generation != coverGeneration) return null
-            if (dabMotExists(base)) {
-                val separator = if ('?' in base) '&' else '?'
-                return "$base${separator}v=${System.currentTimeMillis()}"
+        val startedAt = System.currentTimeMillis()
+        var appliedForThisGeneration = false
+
+        while (generation == coverGeneration) {
+            val revision = dabMotRevision(base)
+
+            if (revision != null) {
+                val genuinelyNew = lastDabMotRevision == null || revision != lastDabMotRevision
+
+                if (genuinelyNew) {
+                    lastDabMotRevision = revision
+                    onChanged(cacheBustedMotUrl(base, revision))
+                    appliedForThisGeneration = true
+                } else if (
+                    !appliedForThisGeneration &&
+                    System.currentTimeMillis() - startedAt >= MOT_UNCHANGED_FALLBACK_MS
+                ) {
+                    // Some stations use a static MOT logo for long periods. After a
+                    // short grace period, reuse it rather than falling back forever
+                    // to the separately configured station logo.
+                    onChanged(cacheBustedMotUrl(base, revision))
+                    appliedForThisGeneration = true
+                }
             }
+
+            delay(MOT_POLL_MS)
         }
-        return null
     }
 
-    private suspend fun dabMotExists(url: String): Boolean = withContext(Dispatchers.IO) {
+    private fun cacheBustedMotUrl(base: String, revision: Long): String {
+        val separator = if ('?' in base) '&' else '?'
+        return "$base${separator}v=$revision"
+    }
+
+    /**
+     * Reads the current MOT revision for the service represented by /slide/<sid>.
+     */
+    private suspend fun dabMotRevision(motUrl: String): Long? = withContext(Dispatchers.IO) {
         runCatching {
-            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+            val slideUrl = URL(motUrl)
+            val sid = slideUrl.path.substringAfterLast('/').trim()
+            if (sid.isBlank()) return@runCatching null
+
+            val muxUrl = URL(slideUrl.protocol, slideUrl.host, slideUrl.port, "/mux.json")
+            val conn = (muxUrl.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 3_000
                 readTimeout = 3_000
                 instanceFollowRedirects = true
                 setRequestProperty("User-Agent", StationRepository.USER_AGENT)
             }
+
             try {
-                conn.responseCode == HttpURLConnection.HTTP_OK &&
-                    conn.contentType.orEmpty().startsWith("image/", ignoreCase = true)
+                if (conn.responseCode != HttpURLConnection.HTTP_OK) return@runCatching null
+                val root = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
+                val services = root.optJSONArray("services") ?: return@runCatching null
+
+                for (i in 0 until services.length()) {
+                    val service = services.optJSONObject(i) ?: continue
+                    if (!service.optString("sid").equals(sid, ignoreCase = true)) continue
+
+                    val mot = service.optJSONObject("mot") ?: return@runCatching null
+                    val lastChange = mot.optLong("lastchange", 0L)
+                    val time = mot.optLong("time", 0L)
+                    return@runCatching maxOf(lastChange, time).takeIf { it > 0L }
+                }
+                null
             } finally {
                 conn.disconnect()
             }
-        }.getOrDefault(false)
+        }.getOrNull()
     }
 
     /**
@@ -1284,6 +1344,16 @@ class RadioService : MediaLibraryService() {
          * few seconds apart, so 15s comfortably covers them.
          */
         private const val MARKER_GRACE_MS = 15_000L
+
+        /** Poll interval for the small welle.io /mux.json document. */
+        private const val MOT_POLL_MS = 2_000L
+
+        /**
+         * If the MOT revision has not changed after a track switch, reuse the current
+         * slide after this delay. This preserves stations that intentionally keep a
+         * static logo in MOT while still giving dynamic slides time to update first.
+         */
+        private const val MOT_UNCHANGED_FALLBACK_MS = 8_000L
 
         /** Assumed track length when the catalog doesn't know it. */
         private const val FALLBACK_TRACK_MS = 5 * 60_000L
