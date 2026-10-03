@@ -67,7 +67,7 @@ class KeepCurrentStreamPlayer(player: Player) : ForwardingPlayer(player) {
         if (requested != current) return false
         if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) return false
 
-        Log.i(TAG, "stacja $requested juz gra - nie przerywam strumienia")
+        Log.i(TAG, "station $requested is already playing - keeping current stream")
         if (!playWhenReady) play()
         return true
     }
