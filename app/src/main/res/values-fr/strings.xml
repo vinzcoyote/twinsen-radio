@@ -5,7 +5,7 @@
     <string name="settings_title">Options</string>
 
     <string name="node_favourites">Favoris</string>
-    <string name="node_all">Toutes</string>
+    <string name="node_all">Toutes les stations</string>
     <string name="node_recent">Récentes</string>
     <string name="node_genres">Genres</string>
 
@@ -88,7 +88,6 @@
     <string name="opt_sec_lines">Affichage sur le tableau de bord</string>
     <string name="opt_sec_artwork">Illustration</string>
     <string name="opt_sec_diag">Mode diagnostic</string>
-    <string name="opt_sec_browse">Listes dans Android Auto</string>
     <string name="opt_sec_stream">Flux et stations personnalisées</string>
 
     <string name="opt_lines_intro">Mesuré dans une Passat : l\'Active Info Display affiche trois lignes, l\'écran central affiche la première et la troisième. La ligne centrale est visible uniquement sur l\'AID. Les champs sont communs : ce qui est placé sur la ligne 1 ou 3 ne peut pas être masqué sur l\'écran central.</string>
@@ -114,13 +113,13 @@
     <string name="prev_station">Station précédente</string>
     <string name="next_station">Station suivante</string>
 
+    <string name="aa_view_grid">Vue grille</string>
+    <string name="aa_view_list">Vue liste</string>
+
     <string name="opt_diag">Mode diagnostic des métadonnées</string>
     <string name="opt_diag_sub">Chaque champ de métadonnées reçoit une étiquette de diagnostic au lieu de sa vraie valeur. Utile pour identifier les champs affichés sur l\'AID.</string>
     <string name="opt_diag_api">Ajouter le nom du champ API</string>
     <string name="opt_diag_api_sub">Par exemple « TITRE‹title› » au lieu de « TITRE ».</string>
-
-    <string name="opt_style_browsable">Style Android Auto — dossiers</string>
-    <string name="opt_style_playable">Style Android Auto — stations</string>
 
     <string name="opt_buffer">Tampon du flux</string>
     <string name="opt_artwork">Source des pochettes</string>
