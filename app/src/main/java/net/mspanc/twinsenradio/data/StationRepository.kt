@@ -103,7 +103,7 @@ class StationRepository private constructor(private val appContext: Context) {
         urls.forEachIndexed { index, url ->
             runCatching { fetchText(url) }
                 .onSuccess { body -> extra += M3uParser.parse(body, index.toString()) }
-                .onFailure { Log.w(TAG, "Nie udalo sie pobrac listy $url: ${it.message}") }
+                .onFailure { Log.w(TAG, "Failed to fetch list $url: ${it.message}") }
         }
         cache = builtIn + extra
         userLoadedFor = urls
@@ -141,7 +141,7 @@ class StationRepository private constructor(private val appContext: Context) {
             )
         }
     }.getOrElse {
-        Log.e(TAG, "Nie udalo sie wczytac stations.json", it)
+        Log.e(TAG, "Failed to read stations.json", it)
         emptyList()
     }
 
