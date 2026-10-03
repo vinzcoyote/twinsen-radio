@@ -96,7 +96,7 @@ class ReconnectController(
             .build()
         runCatching { connectivity?.registerNetworkCallback(request, networkCallback) }
             .onSuccess { registered = true }
-            .onFailure { Log.w(TAG, "Nie udalo sie zarejestrowac nasluchu sieci", it) }
+            .onFailure { Log.w(TAG, "Failed to register network callback", it) }
         player.addListener(this)
     }
 
@@ -155,12 +155,12 @@ class ReconnectController(
     private fun retryNow(reason: String) {
         cancelPending()
         if (!player.playWhenReady) return
-        Log.i(TAG, "Wznawiam odtwarzanie ($reason)")
+        Log.i(TAG, "Resuming playback ($reason)")
         status = currentStatus()
         runCatching {
             player.prepare()
             player.play()
-        }.onFailure { Log.w(TAG, "prepare() nie wyszlo", it) }
+        }.onFailure { Log.w(TAG, "prepare() failed", it) }
         // If this fails, onPlayerError will schedule the next attempt.
         scheduleRetry()
     }
