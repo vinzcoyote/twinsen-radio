@@ -1,14 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--
-        Polska liczba mnoga ma trzy formy poza pojedyncza: "2 stacje", "5 stacji",
-        "22 stacje". Android rozroznia je jako few/many/other i sam wybiera
-        wlasciwa - dlatego nie sklejamy tego recznie w kodzie.
-    -->
     <plurals name="discover_results">
-        <item quantity="one">Znaleziono %1$d stację. Stuknij, żeby zobaczyć szczegóły.</item>
-        <item quantity="few">Znaleziono %1$d stacje. Stuknij, żeby zobaczyć szczegóły.</item>
-        <item quantity="many">Znaleziono %1$d stacji. Stuknij, żeby zobaczyć szczegóły.</item>
-        <item quantity="other">Znaleziono %1$d stacji. Stuknij, żeby zobaczyć szczegóły.</item>
+        <item quantity="one">%1$d station trouvée. Touchez pour afficher les détails.</item>
+        <item quantity="other">%1$d stations trouvées. Touchez pour afficher les détails.</item>
     </plurals>
 </resources>
