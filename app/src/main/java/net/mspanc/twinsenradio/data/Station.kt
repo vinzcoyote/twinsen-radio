@@ -58,7 +58,7 @@ data class Station(
 
     companion object {
         const val MEDIA_ID_PREFIX = "st:"
-        const val DEFAULT_LABEL = "Strumień stacji"
+        const val DEFAULT_LABEL = "Flux de la station"
 
         fun idFromMediaId(mediaId: String): String? =
             if (mediaId.startsWith(MEDIA_ID_PREFIX)) mediaId.removePrefix(MEDIA_ID_PREFIX) else null
