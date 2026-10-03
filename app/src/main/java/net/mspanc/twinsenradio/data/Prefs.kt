@@ -47,15 +47,15 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_DIAG_API, false)
         set(v) = sp.edit { putBoolean(KEY_DIAG_API, v) }
 
-    /** Presentation scheme for folders in Android Auto (see [ContentStyle]). */
-    var browsableStyle: Int
-        get() = sp.getInt(KEY_STYLE_BROWSABLE, ContentStyle.CATEGORY_LIST)
-        set(v) = sp.edit { putInt(KEY_STYLE_BROWSABLE, v) }
+    /** Android Auto home view: favourites are shown as a grid by default. */
+    var aaFavouritesGrid: Boolean
+        get() = sp.getBoolean(KEY_AA_FAVOURITES_GRID, true)
+        set(v) = sp.edit { putBoolean(KEY_AA_FAVOURITES_GRID, v) }
 
-    /** Presentation scheme for stations in Android Auto. */
-    var playableStyle: Int
-        get() = sp.getInt(KEY_STYLE_PLAYABLE, ContentStyle.LIST)
-        set(v) = sp.edit { putInt(KEY_STYLE_PLAYABLE, v) }
+    /** Android Auto "all stations" view: grid by default, independently switchable. */
+    var aaAllStationsGrid: Boolean
+        get() = sp.getBoolean(KEY_AA_ALL_GRID, true)
+        set(v) = sp.edit { putBoolean(KEY_AA_ALL_GRID, v) }
 
     /**
      * Content of the successive description lines. Numbered like on the AID,
@@ -420,8 +420,8 @@ class Prefs(context: Context) {
         const val KEY_CLOCK_FG = "clock_foreground"
         const val KEY_ENRICH_ALBUM = "enrich_with_album"
         const val KEY_SWAP = "swap_title_artist"
-        const val KEY_STYLE_BROWSABLE = "aa_style_browsable"
-        const val KEY_STYLE_PLAYABLE = "aa_style_playable"
+        const val KEY_AA_FAVOURITES_GRID = "aa_favourites_grid"
+        const val KEY_AA_ALL_GRID = "aa_all_stations_grid"
         const val KEY_BUFFER = "buffer_profile"
         const val KEY_ARTWORK = "artwork_mode"
         const val KEY_M3U = "user_m3u"
