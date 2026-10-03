@@ -135,7 +135,7 @@ class RadioService : MediaLibraryService() {
             Prefs.KEY_LINE_TOP, Prefs.KEY_LINE_MIDDLE, Prefs.KEY_LINE_BOTTOM,
             Prefs.KEY_CLOCK_FACE, Prefs.KEY_CLOCK_ALWAYS, Prefs.KEY_CLOCK_BG,
             Prefs.KEY_CLOCK_FG, Prefs.KEY_ENRICH_ALBUM -> refreshCurrentMetadata(force = true)
-            Prefs.KEY_BUFFER -> Log.i(TAG, "Zmieniono bufor - zadziala po restarcie odtwarzania")
+            Prefs.KEY_BUFFER -> Log.i(TAG, "Buffer changed - applies after playback restart")
             // A quality change or a custom address change concerns a specific station.
             // The keys are prefixed with its identifier, so we check the beginning.
             else -> if (key?.startsWith("stream_") == true) reloadCurrentStation()
@@ -194,7 +194,7 @@ class RadioService : MediaLibraryService() {
         scope.launch {
             Prefs.favouritesFlow.collect { favourites ->
                 if (!this@RadioService::session.isInitialized) return@collect
-                Log.i(TAG, "ulubione zmienione (${favourites.size}) - odswiezam przyciski i wezly")
+                Log.i(TAG, "Favourites changed (${favourites.size}) - refreshing buttons and nodes")
                 session.setCustomLayout(customLayout())
                 notifyBrowseNodesChanged(NODE_FAVOURITES, NODE_ALL, NODE_RECENT)
             }
@@ -205,7 +205,7 @@ class RadioService : MediaLibraryService() {
         scope.launch {
             Prefs.discoveredFlow.collect { stations ->
                 if (!this@RadioService::session.isInitialized) return@collect
-                Log.i(TAG, "stacje z sieci zmienione (${stations.size}) - odswiezam wezly")
+                Log.i(TAG, "Online stations changed (${stations.size}) - refreshing nodes")
                 notifyBrowseNodesChanged(NODE_ALL, NODE_GENRES)
             }
         }
@@ -393,8 +393,8 @@ class RadioService : MediaLibraryService() {
         Log.i(
             TAG_ICY,
             "  -> artist='${now?.artist}' title='${now?.songTitle}' " +
-                "slogan='${now?.slogan}' reklama=${now?.isAd} " +
-                "znacznik=${now?.isControlMarker} utwor=${now?.isRealSong}"
+                "slogan='${now?.slogan}' ad=${now?.isAd} " +
+                "marker=${now?.isControlMarker} track=${now?.isRealSong}"
         )
         publish(now)
     }
@@ -414,10 +414,10 @@ class RadioService : MediaLibraryService() {
         pendingMarkerJob?.cancel()
 
         if (now?.isControlMarker == true && now.isAd != true) {
-            Log.i(TAG_ICY, "znacznik '${now.raw}' - czekam ${MARKER_GRACE_MS}ms na to, co dalej")
+            Log.i(TAG_ICY, "marker '${now.raw}' - waiting ${MARKER_GRACE_MS}ms for next metadata")
             pendingMarkerJob = scope.launch {
                 delay(MARKER_GRACE_MS)
-                Log.i(TAG_ICY, "po znaczniku nic nie przyszlo - zostawiam sama stacje")
+                Log.i(TAG_ICY, "nothing arrived after marker - falling back to station")
                 apply(null)
             }
             return
@@ -480,8 +480,8 @@ class RadioService : MediaLibraryService() {
             if (PlaybackStatusBus.nowPlaying.value?.raw != now.raw) return@launch
             Log.i(
                 TAG_ICY,
-                "utwor '${now.raw}' powinien byc juz po ${timeout / 1000}s - " +
-                    "stacja nic nie przyslala, czyszcze opis"
+                "track '${now.raw}' should have ended after ${timeout / 1000}s - " +
+                    "station sent no update, clearing description"
             )
             // If the station has ever given its slogan, it's better to show it
             // than an empty line - RNS has "Pion i poziom!", RMF "FAKTY" during the news.
@@ -642,7 +642,7 @@ class RadioService : MediaLibraryService() {
         val station = repo.byId(id) ?: return
         if (station.stream == currentStreamUrl) return
         currentStreamUrl = station.stream
-        Log.i(TAG, "zmieniono strumien stacji ${station.name} na ${station.stream}")
+        Log.i(TAG, "station stream changed: ${station.name} -> ${station.stream}")
         val wasPlaying = player.playWhenReady
         player.setMediaItem(playableItem(station))
         player.prepare()
@@ -767,7 +767,7 @@ class RadioService : MediaLibraryService() {
                 session.notifyChildrenChanged(controller, node, count, null)
             }
         }
-        Log.i(TAG, "powiadomiono ${controllers.size} kontroler(ow) o ${nodes.joinToString()}")
+        Log.i(TAG, "notified ${controllers.size} controller(s) about ${nodes.joinToString()}")
     }
 
     /** Browse node content - shared between responses and notifications. */
@@ -806,7 +806,7 @@ class RadioService : MediaLibraryService() {
     private fun favouriteButton(): CommandButton {
         val id = PlaybackStatusBus.stationId.value
         val isFav = id != null && id in prefs.favourites
-        Log.i(TAG, "buduje gwiazdke dla stacji '$id': ulubiona=$isFav")
+        Log.i(TAG, "building favourite button for '$id': favourite=$isFav")
         // The icon goes through TWO channels at once, and that's not redundancy.
         //
         // The proper channel is extras: Android's documentation for cars says
@@ -912,7 +912,7 @@ class RadioService : MediaLibraryService() {
                     val result = Bundle()
                     if (station != null) {
                         val added = prefs.toggleFavourite(station.id)
-                        Log.i(TAG, "z listy: ${station.name} ${if (added) "dodana do" else "usunieta z"} ulubionych")
+                        Log.i(TAG, "from list: ${station.name} ${if (added) "added to" else "removed from"} favourites")
                         // Tell the head unit to refresh this item so the icon switches
                         result.putString(KEY_ACTION_RESULT_REFRESH_ITEM, mediaId)
                         result.putString(
@@ -934,7 +934,7 @@ class RadioService : MediaLibraryService() {
                     val id = PlaybackStatusBus.stationId.value
                     if (id != null) {
                         val added = prefs.toggleFavourite(id)
-                        Log.i(TAG, "stacja $id ${if (added) "dodana do" else "usunieta z"} ulubionych")
+                        Log.i(TAG, "station $id ${if (added) "added to" else "removed from"} favourites")
                         session.setCustomLayout(customLayout())
                         // notifyChildrenChanged only exists on MediaLibrarySession,
                         // and here `session` has the wider MediaSession type
@@ -1057,14 +1057,14 @@ class RadioService : MediaLibraryService() {
 
             if (station == null) {
                 return Futures.immediateFailedFuture(
-                    UnsupportedOperationException("brak stacji do wznowienia")
+                    UnsupportedOperationException("no station available for resume")
                 )
             }
 
             val skad = if (current != null) "juz zaladowana" else "z historii"
             Log.i(
                 TAG,
-                "wznawiam po podlaczeniu: ${station.name} ($skad, zlecil ${controller.packageName})"
+                "resuming after connection: ${station.name} ($skad, requested by ${controller.packageName})"
             )
             return Futures.immediateFuture(
                 MediaSession.MediaItemsWithStartPosition(
