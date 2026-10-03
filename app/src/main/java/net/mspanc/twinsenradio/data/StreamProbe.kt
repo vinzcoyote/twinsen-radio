@@ -52,19 +52,19 @@ object StreamProbe {
             try {
                 val code = conn.responseCode
                 if (code !in 200..299) {
-                    val extra = if (code == 403) " (blokada regionalna?)" else ""
+                    val extra = if (code == 403) " (blocage régional ?)" else ""
                     return@withContext Report(Result.HTTP_ERROR, "HTTP $code$extra")
                 }
                 // Whether something is actually streaming - a bare 200 code can just be an error page
                 val buffer = ByteArray(PROBE_BYTES)
                 val read = conn.inputStream.use { it.read(buffer) }
                 if (read <= 0) {
-                    return@withContext Report(Result.FAILED, "serwer nie przyslal danych")
+                    return@withContext Report(Result.FAILED, "le serveur n\'a renvoyé aucune donnée")
                 }
                 val type = conn.contentType.orEmpty()
                 val bitrate = conn.getHeaderField("icy-br")
                 val detail = buildString {
-                    append(type.substringBefore(';').ifBlank { "nieznany format" })
+                    append(type.substringBefore(';').ifBlank { "format inconnu" })
                     if (!bitrate.isNullOrBlank()) append(" · $bitrate kb/s")
                 }
                 Report(Result.OK, detail)
@@ -72,9 +72,9 @@ object StreamProbe {
                 conn.disconnect()
             }
         } catch (e: UnknownHostException) {
-            Report(Result.NO_HOST, "serwer ${e.message} nie istnieje")
+            Report(Result.NO_HOST, "le serveur ${e.message} n\'existe pas")
         } catch (e: java.net.SocketTimeoutException) {
-            Report(Result.TIMEOUT, "serwer nie odpowiada")
+            Report(Result.TIMEOUT, "le serveur ne répond pas")
         } catch (e: Exception) {
             Report(Result.FAILED, e.message ?: e.javaClass.simpleName)
         }
