@@ -203,7 +203,7 @@ class RadioService : MediaLibraryService() {
                 if (!this@RadioService::session.isInitialized) return@collect
                 Log.i(TAG, "Favourites changed (${favourites.size}) - refreshing buttons and nodes")
                 session.setCustomLayout(customLayout())
-                notifyBrowseNodesChanged(NODE_FAVOURITES, NODE_ALL, NODE_RECENT)
+                notifyBrowseNodesChanged(NODE_ROOT, NODE_ALL)
             }
         }
 
@@ -213,7 +213,7 @@ class RadioService : MediaLibraryService() {
             Prefs.discoveredFlow.collect { stations ->
                 if (!this@RadioService::session.isInitialized) return@collect
                 Log.i(TAG, "Online stations changed (${stations.size}) - refreshing nodes")
-                notifyBrowseNodesChanged(NODE_ALL, NODE_GENRES)
+                notifyBrowseNodesChanged(NODE_ALL)
             }
         }
     }
@@ -817,14 +817,10 @@ class RadioService : MediaLibraryService() {
      */
     private fun notifyBrowseNodesChanged(vararg nodes: String) {
         val controllers = session.connectedControllers
-        // Media3 matches notifications to the parameters the controller
-        // registered with. Sending with null missed the target - Android Auto
-        // subscribes with content style parameters, so we pass the same ones.
-        val params = contentStyleParams()
         for (node in nodes) {
-            // The actual item count, not Int.MAX_VALUE - this way the HDU gets
-            // a meaningful sense of how much the list changed.
-            val count = childrenOf(node).size
+            // Use the style that belongs to the node being refreshed.
+            val params = contentStyleParams(node)
+            val count = browseNodeChildCount(node)
             session.notifyChildrenChanged(node, count, params)
             session.notifyChildrenChanged(node, count, null)
             for (controller in controllers) {
@@ -835,14 +831,16 @@ class RadioService : MediaLibraryService() {
         Log.i(TAG, "notified ${controllers.size} controller(s) about ${nodes.joinToString()}")
     }
 
-    /** Browse node content - shared between responses and notifications. */
-    private fun childrenOf(parentId: String): List<Station> = when {
-        parentId == NODE_FAVOURITES -> repo.favourites()
-        parentId == NODE_ALL -> repo.all()
-        parentId == NODE_RECENT -> repo.recent()
+    private fun browseNodeChildCount(parentId: String): Int = when {
+        // Home = favourite stations + the single "All stations" entry.
+        parentId == NODE_ROOT -> repo.favourites().size + 1
+        parentId == NODE_FAVOURITES -> repo.favourites().size
+        parentId == NODE_ALL -> repo.all().size
+        parentId == NODE_RECENT -> repo.recent().size
+        parentId == NODE_GENRES -> repo.genres().size
         parentId.startsWith(NODE_GENRE_PREFIX) ->
-            repo.byGenre(parentId.removePrefix(NODE_GENRE_PREFIX))
-        else -> emptyList()
+            repo.byGenre(parentId.removePrefix(NODE_GENRE_PREFIX)).size
+        else -> 0
     }
 
     /**
@@ -970,6 +968,30 @@ class RadioService : MediaLibraryService() {
                     session.setCustomLayout(customLayout())
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
+                ACTION_VIEW_GRID, ACTION_VIEW_LIST -> {
+                    val requestedNode = args.getString(KEY_ACTION_MEDIA_ITEM_ID)
+                    val node = if (requestedNode == NODE_ALL) NODE_ALL else NODE_ROOT
+                    val grid = customCommand.customAction == ACTION_VIEW_GRID
+
+                    if (node == NODE_ALL) {
+                        prefs.aaAllStationsGrid = grid
+                    } else {
+                        prefs.aaFavouritesGrid = grid
+                    }
+
+                    notifyBrowseNodesChanged(node)
+
+                    val result = Bundle().apply {
+                        // Re-enter the current node so Android Auto immediately
+                        // asks for its children with the new content-style hint.
+                        putString(KEY_ACTION_RESULT_BROWSE_NODE, node)
+                        putString(KEY_ACTION_RESULT_REFRESH_ITEM, node)
+                    }
+                    return Futures.immediateFuture(
+                        SessionResult(SessionResult.RESULT_SUCCESS, result)
+                    )
+                }
+
                 // An action from the list item's menu - the head unit attaches the item id
                 ACTION_FAVOURITE, ACTION_UNFAVOURITE -> {
                     val mediaId = args.getString(KEY_ACTION_MEDIA_ITEM_ID)
@@ -1044,16 +1066,14 @@ class RadioService : MediaLibraryService() {
                 return Futures.immediateFuture(LibraryResult.ofItem(recentRoot, params))
             }
 
-            val root = MediaItem.Builder()
-                .setMediaId(NODE_ROOT)
-                .setMediaMetadata(
-                    metadata.forFolder(
-                        getString(net.mspanc.twinsenradio.R.string.root_title),
-                        MediaMetadata.MEDIA_TYPE_FOLDER_MIXED
-                    )
-                )
-                .build()
-            return Futures.immediateFuture(LibraryResult.ofItem(root, contentStyleParams()))
+            val root = browseNode(
+                NODE_ROOT,
+                getString(net.mspanc.twinsenradio.R.string.root_title),
+                MediaMetadata.MEDIA_TYPE_FOLDER_MIXED
+            )
+            return Futures.immediateFuture(
+                LibraryResult.ofItem(root, contentStyleParams(NODE_ROOT))
+            )
         }
 
         override fun onGetChildren(
@@ -1065,13 +1085,17 @@ class RadioService : MediaLibraryService() {
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
             val children: List<MediaItem> = when {
-                parentId == NODE_ROOT -> listOf(
-                    folder(NODE_FAVOURITES, net.mspanc.twinsenradio.R.string.node_favourites),
-                    folder(NODE_ALL, net.mspanc.twinsenradio.R.string.node_all),
-                    folder(NODE_RECENT, net.mspanc.twinsenradio.R.string.node_recent),
-                    folder(NODE_GENRES, net.mspanc.twinsenradio.R.string.node_genres)
-                )
+                // Android Auto home: favourite stations immediately, plus one
+                // secondary entry giving access to the complete station list.
+                parentId == NODE_ROOT ->
+                    repo.favourites().map(::browseItem) +
+                        browseNode(
+                            NODE_ALL,
+                            getString(net.mspanc.twinsenradio.R.string.node_all),
+                            MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS
+                        )
 
+                // Kept for compatibility with an old cached Android Auto tree.
                 parentId == NODE_FAVOURITES -> repo.favourites().map(::browseItem)
                 parentId == NODE_ALL -> repo.all().map(::browseItem)
                 parentId == NODE_RECENT -> repo.recent().map(::browseItem)
@@ -1092,7 +1116,10 @@ class RadioService : MediaLibraryService() {
             }
             Log.i(TAG, "onGetChildren($parentId) od ${browser.packageName} -> ${children.size} pozycji")
             return Futures.immediateFuture(
-                LibraryResult.ofItemList(ImmutableList.copyOf(children), contentStyleParams())
+                LibraryResult.ofItemList(
+                    ImmutableList.copyOf(children),
+                    contentStyleParams(parentId)
+                )
             )
         }
 
@@ -1165,8 +1192,29 @@ class RadioService : MediaLibraryService() {
             browser: MediaSession.ControllerInfo,
             mediaId: String
         ): ListenableFuture<LibraryResult<MediaItem>> {
+            val node = when (mediaId) {
+                NODE_ROOT -> browseNode(
+                    NODE_ROOT,
+                    getString(net.mspanc.twinsenradio.R.string.root_title),
+                    MediaMetadata.MEDIA_TYPE_FOLDER_MIXED
+                )
+                NODE_ALL -> browseNode(
+                    NODE_ALL,
+                    getString(net.mspanc.twinsenradio.R.string.node_all),
+                    MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS
+                )
+                else -> null
+            }
+            if (node != null) {
+                return Futures.immediateFuture(
+                    LibraryResult.ofItem(node, contentStyleParams(mediaId))
+                )
+            }
+
             val station = repo.byMediaId(mediaId)
-                ?: return Futures.immediateFuture(LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE))
+                ?: return Futures.immediateFuture(
+                    LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+                )
             return Futures.immediateFuture(LibraryResult.ofItem(browseItem(station), null))
         }
 
@@ -1191,7 +1239,10 @@ class RadioService : MediaLibraryService() {
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
             val hits = repo.search(query).map(::browseItem)
             return Futures.immediateFuture(
-                LibraryResult.ofItemList(ImmutableList.copyOf(hits), contentStyleParams())
+                LibraryResult.ofItemList(
+                    ImmutableList.copyOf(hits),
+                    contentStyleParams(NODE_ALL)
+                )
             )
         }
 
@@ -1234,9 +1285,40 @@ class RadioService : MediaLibraryService() {
         MediaItem.Builder()
             .setMediaId(id)
             .setMediaMetadata(
-                metadata.forFolder(getString(titleRes), MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS)
+                metadata.forFolder(
+                    getString(titleRes),
+                    MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS
+                )
             )
             .build()
+
+    /**
+     * Browsable node carrying its own grid/list toggle action. Android Auto
+     * renders actions attached to a browse node in the secondary toolbar.
+     */
+    private fun browseNode(id: String, title: String, mediaType: Int): MediaItem =
+        MediaItem.Builder()
+            .setMediaId(id)
+            .setMediaMetadata(
+                metadata.forFolder(title, mediaType)
+                    .buildUpon()
+                    .setExtras(
+                        Bundle().apply {
+                            putStringArrayList(
+                                KEY_ACTION_ID_LIST,
+                                arrayListOf(
+                                    if (nodeUsesGrid(id)) ACTION_VIEW_LIST
+                                    else ACTION_VIEW_GRID
+                                )
+                            )
+                        }
+                    )
+                    .build()
+            )
+            .build()
+
+    private fun nodeUsesGrid(nodeId: String): Boolean =
+        if (nodeId == NODE_ALL) prefs.aaAllStationsGrid else prefs.aaFavouritesGrid
 
     /**
      * A list item with a "favourite" action available directly from the context
@@ -1285,6 +1367,18 @@ class RadioService : MediaLibraryService() {
                 net.mspanc.twinsenradio.R.string.fav_remove,
                 "star_filled",
                 net.mspanc.twinsenradio.R.drawable.ic_star_filled_aa
+            ),
+            action(
+                ACTION_VIEW_GRID,
+                net.mspanc.twinsenradio.R.string.aa_view_grid,
+                "view_grid",
+                net.mspanc.twinsenradio.R.drawable.ic_view_grid_aa
+            ),
+            action(
+                ACTION_VIEW_LIST,
+                net.mspanc.twinsenradio.R.string.aa_view_list,
+                "view_list",
+                net.mspanc.twinsenradio.R.drawable.ic_view_list_aa
             )
         )
     }
@@ -1300,11 +1394,20 @@ class RadioService : MediaLibraryService() {
      * The presentation scheme chosen in Options. These are the four layouts
      * Android Auto actually offers media apps.
      */
-    private fun contentStyleParams(): MediaLibraryService.LibraryParams {
+    private fun contentStyleParams(
+        parentId: String = NODE_ROOT
+    ): MediaLibraryService.LibraryParams {
         val extras = Bundle().apply {
             putBoolean(ContentStyle.EXTRA_SUPPORTED, true)
-            putInt(ContentStyle.EXTRA_BROWSABLE_HINT, prefs.browsableStyle)
-            putInt(ContentStyle.EXTRA_PLAYABLE_HINT, prefs.playableStyle)
+
+            // The only browsable item on the home screen is "All stations".
+            // Keeping browsable nodes as a simple list makes that entry discreet,
+            // while playable radio stations use the user's grid/list choice.
+            putInt(ContentStyle.EXTRA_BROWSABLE_HINT, ContentStyle.LIST)
+            putInt(
+                ContentStyle.EXTRA_PLAYABLE_HINT,
+                if (nodeUsesGrid(parentId)) ContentStyle.GRID else ContentStyle.LIST
+            )
             putParcelableArrayList(KEY_ACTION_ROOT_LIST, browseActionsRootList())
         }
         return MediaLibraryService.LibraryParams.Builder().setExtras(extras).build()
@@ -1325,6 +1428,8 @@ class RadioService : MediaLibraryService() {
         // doesn't expose them in its own MediaConstants.
         private const val ACTION_FAVOURITE = "net.mspanc.twinsenradio.FAVOURITE"
         private const val ACTION_UNFAVOURITE = "net.mspanc.twinsenradio.UNFAVOURITE"
+        private const val ACTION_VIEW_GRID = "net.mspanc.twinsenradio.VIEW_GRID"
+        private const val ACTION_VIEW_LIST = "net.mspanc.twinsenradio.VIEW_LIST"
 
         private const val KEY_ACTION_ROOT_LIST =
             "androidx.media.utils.extras.CUSTOM_BROWSER_ACTION_ROOT_LIST"
@@ -1342,6 +1447,8 @@ class RadioService : MediaLibraryService() {
             "androidx.media.utils.extras.KEY_CUSTOM_BROWSER_ACTION_RESULT_REFRESH_ITEM"
         private const val KEY_ACTION_RESULT_MESSAGE =
             "androidx.media.utils.extras.KEY_CUSTOM_BROWSER_ACTION_RESULT_MESSAGE"
+        private const val KEY_ACTION_RESULT_BROWSE_NODE =
+            "androidx.media.utils.extras.KEY_CUSTOM_BROWSER_ACTION_RESULT_BROWSE_NODE"
 
         /**
          * How long we wait after a control marker before deciding the station
