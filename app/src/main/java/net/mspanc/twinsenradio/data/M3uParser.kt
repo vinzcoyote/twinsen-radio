@@ -2,7 +2,8 @@ package net.mspanc.twinsenradio.data
 
 /**
  * A minimal parser for extended M3U (#EXTM3U / #EXTINF). Extracts the name, URL,
- * and the tvg-logo and group-title attributes, which in practice carry the logo and genre.
+ * and selected attributes. Besides the usual tvg-logo and group-title, Twinsen
+ * understands dab-mot as an optional DAB slideshow artwork fallback.
  */
 object M3uParser {
 
@@ -13,6 +14,7 @@ object M3uParser {
         var pendingName: String? = null
         var pendingLogo: String? = null
         var pendingGroup: String? = null
+        var pendingDabMot: String? = null
         var seq = 0
 
         body.lineSequence().forEach { rawLine ->
@@ -26,6 +28,7 @@ object M3uParser {
                     val attrs = attrRegex.findAll(line).associate { it.groupValues[1].lowercase() to it.groupValues[2] }
                     pendingLogo = attrs["tvg-logo"]?.ifBlank { null }
                     pendingGroup = attrs["group-title"]?.ifBlank { null }
+                    pendingDabMot = attrs["dab-mot"]?.ifBlank { null }
                 }
 
                 line.startsWith("#") -> Unit
@@ -38,11 +41,13 @@ object M3uParser {
                         genre = pendingGroup ?: "Z listy M3U",
                         stream = line,
                         logoUrl = pendingLogo,
-                        source = Station.Source.USER_M3U
+                        source = Station.Source.USER_M3U,
+                        dabMotUrl = pendingDabMot
                     )
                     pendingName = null
                     pendingLogo = null
                     pendingGroup = null
+                    pendingDabMot = null
                 }
             }
         }
