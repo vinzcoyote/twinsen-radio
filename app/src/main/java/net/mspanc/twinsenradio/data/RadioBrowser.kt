@@ -100,7 +100,7 @@ object RadioBrowser {
                 id = "$DISCOVERED_PREFIX$uuid",
                 name = name,
                 genre = tags?.split(',')?.firstOrNull()?.trim()?.replaceFirstChar { it.uppercase() }
-                    ?.takeIf { it.isNotBlank() } ?: "Z sieci",
+                    ?.takeIf { it.isNotBlank() } ?: "Internet",
                 stream = stream,
                 streams = (listOf(own) + alternates).sortedByDescending { it.kbps },
                 logoUrl = faviconUrl,
@@ -128,13 +128,13 @@ object RadioBrowser {
 
         for (mirror in MIRRORS) {
             val body = runCatching { get(mirror + path) }
-                .onFailure { Log.w(TAG, "$mirror nie odpowiedzial: ${it.message}") }
+                .onFailure { Log.w(TAG, "$mirror did not respond: ${it.message}") }
                 .getOrNull() ?: continue
             val parsed = runCatching { parse(body) }.getOrNull() ?: continue
             Log.i(TAG, "'$q' -> ${parsed.size} wynikow z $mirror")
             return@withContext parsed
         }
-        Log.w(TAG, "zaden serwer katalogu nie odpowiedzial")
+        Log.w(TAG, "no catalog server responded")
         emptyList()
     }
 
