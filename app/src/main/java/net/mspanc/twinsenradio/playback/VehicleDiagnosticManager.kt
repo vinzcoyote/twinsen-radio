@@ -1,6 +1,7 @@
 package net.mspanc.twinsenradio.playback
 
 import android.content.Context
+import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -81,6 +82,7 @@ object VehicleDiagnosticManager {
     private const val PREFS = "vehicle_diagnostics"
     private const val KEY_FOLDER_URI = "folder_uri"
     private const val TAG = "VehicleDiagnostic"
+    private const val ANDROID_AUTO_PACKAGE = "com.google.android.projection.gearhead"
     private const val IDLE_TIMEOUT_MS = 15 * 60_000L
 
     private const val KEY_MEDIA_HOST_VERSION =
@@ -194,6 +196,7 @@ object VehicleDiagnosticManager {
             extras = null,
             details = linkedMapOf("started" to started.format(stampHuman))
         )
+        recordDisplaySnapshot(app, "diagnostic_start", app.packageName)
 
         // Android Auto may already have sent its root hints before the user opened
         // Settings and pressed "Create diagnostic". Replay the latest observations
@@ -280,6 +283,9 @@ object VehicleDiagnosticManager {
                 "interfaceVersion" to interfaceVersion.toString()
             )
         ) || changed
+        if (packageName == ANDROID_AUTO_PACKAGE) {
+            changed = recordDisplaySnapshot(context, "android_auto_connection", packageName) || changed
+        }
         if (changed) onNewInformation(s)
     }
 
@@ -293,6 +299,9 @@ object VehicleDiagnosticManager {
         s.browserPackages += packageName
         var changed = extractKnownCapabilities(s, hints)
         changed = addEvent(s, "library_root", packageName, hints) || changed
+        if (packageName == ANDROID_AUTO_PACKAGE) {
+            changed = recordDisplaySnapshot(context, "library_root", packageName) || changed
+        }
         if (changed) onNewInformation(s)
     }
 
@@ -327,6 +336,9 @@ object VehicleDiagnosticManager {
                 "pageSize" to pageSize.toString()
             )
         ) || changed
+        if (packageName == ANDROID_AUTO_PACKAGE && parentId == "/all") {
+            changed = recordDisplaySnapshot(context, "children_/all", packageName) || changed
+        }
         if (changed) onNewInformation(s)
     }
 
@@ -472,6 +484,108 @@ object VehicleDiagnosticManager {
     }.onFailure {
         Log.w(TAG, "Cannot create $displayName: ${it.message}")
     }.getOrNull()
+
+    private fun recordDisplaySnapshot(
+        context: Context,
+        trigger: String,
+        packageName: String
+    ): Boolean {
+        val s = session ?: return false
+        val displayManager = context.getSystemService(DisplayManager::class.java) ?: return false
+        val presentationIds = displayManager
+            .getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
+            .mapTo(mutableSetOf()) { it.displayId }
+
+        var changed = false
+        val displays = displayManager.displays.sortedBy { it.displayId }
+        changed = addCapability(s, "display.visible_count", displays.size.toString()) || changed
+        changed = addCapability(
+            s,
+            "display.presentation_count",
+            presentationIds.size.toString()
+        ) || changed
+
+        displays.forEach { display ->
+            val displayContext = runCatching { context.createDisplayContext(display) }.getOrNull()
+            val metrics = displayContext?.resources?.displayMetrics
+            val configuration = displayContext?.resources?.configuration
+            val mode = runCatching { display.mode }.getOrNull()
+
+            val details = linkedMapOf(
+                "trigger" to trigger,
+                "displayId" to display.displayId.toString(),
+                "name" to display.name,
+                "type" to display.type.toString(),
+                "flags" to display.flags.toString(),
+                "state" to display.state.toString(),
+                "rotation" to display.rotation.toString(),
+                "presentation" to (display.displayId in presentationIds).toString()
+            )
+
+            mode?.let {
+                details["modeWidthPx"] = it.physicalWidth.toString()
+                details["modeHeightPx"] = it.physicalHeight.toString()
+                details["refreshRate"] = it.refreshRate.toString()
+            }
+            metrics?.let {
+                details["logicalWidthPx"] = it.widthPixels.toString()
+                details["logicalHeightPx"] = it.heightPixels.toString()
+                details["densityDpi"] = it.densityDpi.toString()
+                details["density"] = it.density.toString()
+                details["scaledDensity"] = it.scaledDensity.toString()
+            }
+            configuration?.let {
+                details["widthDp"] = it.screenWidthDp.toString()
+                details["heightDp"] = it.screenHeightDp.toString()
+                details["smallestWidthDp"] = it.smallestScreenWidthDp.toString()
+                details["orientation"] = it.orientation.toString()
+            }
+
+            val id = display.displayId
+            changed = addCapability(s, "display.$id.name", display.name) || changed
+            mode?.let {
+                changed = addCapability(
+                    s,
+                    "display.$id.mode_px",
+                    "${it.physicalWidth}x${it.physicalHeight}"
+                ) || changed
+            }
+            metrics?.let {
+                changed = addCapability(
+                    s,
+                    "display.$id.logical_px",
+                    "${it.widthPixels}x${it.heightPixels}"
+                ) || changed
+                changed = addCapability(
+                    s,
+                    "display.$id.density_dpi",
+                    it.densityDpi.toString()
+                ) || changed
+            }
+            configuration?.let {
+                changed = addCapability(
+                    s,
+                    "display.$id.size_dp",
+                    "${it.screenWidthDp}x${it.screenHeightDp}"
+                ) || changed
+                changed = addCapability(
+                    s,
+                    "display.$id.smallest_width_dp",
+                    it.smallestScreenWidthDp.toString()
+                ) || changed
+            }
+
+            changed = addEvent(
+                s,
+                "display_snapshot",
+                packageName,
+                null,
+                details
+            ) || changed
+        }
+
+        return changed
+    }
 
     private fun extractKnownCapabilities(s: Session, bundle: Bundle?): Boolean {
         if (bundle == null) return false
