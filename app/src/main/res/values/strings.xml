@@ -128,4 +128,18 @@
     <string name="opt_save">Enregistrer et recharger</string>
     <string name="opt_saved">Enregistré. Android Auto actualisera la liste.</string>
 
+    <string name="opt_sec_vehicle_diag">Diagnostic Android Auto / véhicule</string>
+    <string name="opt_vehicle_diag_intro">Crée un rapport daté des capacités réellement annoncées par Android Auto et le système du véhicule. La collecte continue pendant l’utilisation et s’arrête manuellement, à la déconnexion de l’hôte média ou après 15 minutes sans nouvelle information. Un fichier TXT et un fichier JSON sont conservés dans le dossier choisi.</string>
+    <string name="opt_vehicle_diag_idle">Aucun diagnostic en cours.</string>
+    <string name="opt_vehicle_diag_running">Diagnostic en cours\nDémarré : %1$s\n%2$d informations différentes collectées</string>
+    <string name="opt_vehicle_diag_stopped">Dernier diagnostic terminé : %1$s</string>
+    <string name="opt_vehicle_diag_start">Créer un diagnostic</string>
+    <string name="opt_vehicle_diag_stop">Arrêter le diagnostic</string>
+    <string name="opt_vehicle_diag_reports">Diagnostics précédents</string>
+    <string name="opt_vehicle_diag_no_reports">Aucun rapport trouvé dans ce dossier.</string>
+    <string name="opt_vehicle_diag_report_entry">%1$s — v%2$s</string>
+    <string name="opt_vehicle_diag_choose_folder">Choisissez le dossier où conserver les rapports de diagnostic. Après une réinstallation de l’application, sélectionnez simplement de nouveau ce même dossier.</string>
+    <string name="opt_vehicle_diag_folder_error">Impossible d’utiliser ce dossier. Choisissez un autre dossier pour les diagnostics.</string>
+    <string name="opt_vehicle_diag_started">Diagnostic démarré. Utilisez maintenant Android Auto normalement.</string>
+
 </resources>
