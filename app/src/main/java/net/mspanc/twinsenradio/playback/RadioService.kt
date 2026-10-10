@@ -1084,6 +1084,15 @@ class RadioService : MediaLibraryService() {
             pageSize: Int,
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            ConnectionLog.childrenRequest(
+                this@RadioService,
+                browser.packageName,
+                parentId,
+                page,
+                pageSize,
+                params?.extras
+            )
+
             val children: List<MediaItem> = when {
                 // Android Auto home: favourite stations immediately, plus one
                 // secondary entry giving access to the complete station list.
