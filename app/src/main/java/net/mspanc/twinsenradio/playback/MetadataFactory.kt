@@ -36,7 +36,7 @@ class MetadataFactory(private val context: Context, private val prefs: Prefs) {
             .setIsBrowsable(false)
             .setIsPlayable(true)
             .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
-            .setArtworkUri(logoUri(station))
+            .setArtworkUri(browseLogoUri(station))
             .build()
 
     fun forFolder(title: String, mediaType: Int, artwork: Uri? = null): MediaMetadata =
@@ -247,6 +247,20 @@ class MetadataFactory(private val context: Context, private val prefs: Prefs) {
             }
             else -> b.setArtworkUri(logoUri(station))
         }
+    }
+
+    /**
+     * Android Auto browse artwork for the 128x128 thumbnail experiment.
+     * Playback artwork intentionally keeps using [logoUri].
+     */
+    private fun browseLogoUri(station: Station): Uri {
+        customLogoFile(station)?.let {
+            return LogoProvider.customUriFor(context, station, it)
+        }
+        station.logoUrl?.let {
+            return LogoProvider.remoteThumbnailUriFor(context, station, it)
+        }
+        return LogoProvider.thumbnailUriFor(context, station, logoResId(station))
     }
 
     /**
