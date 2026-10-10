@@ -57,6 +57,8 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.media:media:1.7.0")
+    implementation("androidx.car.app:app:1.8.0-rc01")
+    implementation("androidx.car.app:app-projected:1.8.0-rc01")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("com.google.guava:guava:33.3.1-android")
 }
