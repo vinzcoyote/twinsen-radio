@@ -12,15 +12,18 @@ import java.time.format.DateTimeFormatter
  *
  * Why: logcat is a ring buffer - after an hour of driving, the most
  * interesting entries have long since fallen out of it. Here we write to
- * disk everything Android Auto told us at connection time, so it can be
- * read after the fact.
+ * disk everything Android Auto tells us about the connection and browse
+ * requests, so it can be read after the fact.
+ *
+ * Android Auto exposes some head-unit layout limits in the options bundle
+ * passed while loading children. In particular it may report the maximum
+ * number of GRID items per row. There is no current API key for the number
+ * of visible grid rows, so we log page/pageSize and every option as well
+ * rather than guessing it.
  *
  * What this deliberately does NOT contain and never will: the content of
  * the handshake between Android Auto and the receiver in the car. That
  * conversation happens outside of us and no third-party app can see it.
- * What we do have are the root hints that Android Auto passes to apps -
- * and those reflect the head unit's limitations, for example the requested
- * artwork size or the action limit on list items.
  *
  * Reading it:
  *   adb shell run-as net.mspanc.twinsenradio cat files/polaczenia.log
@@ -31,6 +34,18 @@ object ConnectionLog {
     private const val FILE_NAME = "polaczenia.log"
     private const val MAX_BYTES = 512 * 1024
     private val STAMP: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
+    // Documented Android Auto / MediaBrowserExtras layout hints.
+    // Literal keys avoid adding the whole androidx.car.app artifact just for diagnostics.
+    private const val KEY_MAX_GRID =
+        "androidx.car.app.mediaextensions.KEY_HINT_VIEW_MAX_GRID_ITEMS_COUNT_PER_ROW"
+    private const val KEY_MAX_CATEGORY_GRID =
+        "androidx.car.app.mediaextensions.KEY_HINT_VIEW_MAX_CATEGORY_GRID_ITEMS_COUNT_PER_ROW"
+    private const val KEY_MAX_ITEMS_RESTRICTED =
+        "androidx.car.app.mediaextensions.KEY_HINT_VIEW_MAX_ITEMS_WHILE_RESTRICTED"
+
+    /** Do not fill the persistent log with identical browse requests. */
+    private val seenBrowseRequests = mutableSetOf<String>()
 
     fun connected(
         context: Context,
@@ -47,10 +62,7 @@ object ConnectionLog {
         })
     }
 
-    /**
-     * Hints passed along when the library root is requested. This is where
-     * the head unit's limitations land - artwork size, item limit, action limit.
-     */
+    /** Hints supplied when the library root is requested. */
     fun libraryRoot(context: Context, packageName: String, rootHints: Bundle?) {
         write(context, buildString {
             appendLine("== korzen biblioteki dla $packageName")
@@ -61,6 +73,71 @@ object ConnectionLog {
             }
         })
     }
+
+    /**
+     * Options sent by Android Auto when it asks for a node's children.
+     * The documented GRID column limit is delivered here, not in the root hints.
+     */
+    fun childrenRequest(
+        context: Context,
+        packageName: String,
+        parentId: String,
+        page: Int,
+        pageSize: Int,
+        options: Bundle?
+    ) {
+        val signature = buildString {
+            append(packageName)
+            append('|')
+            append(parentId)
+            append('|')
+            append(page)
+            append('|')
+            append(pageSize)
+            append('|')
+            append(options?.fingerprint().orEmpty())
+        }
+
+        synchronized(seenBrowseRequests) {
+            if (!seenBrowseRequests.add(signature)) return
+        }
+
+        write(context, buildString {
+            appendLine("== browse '$parentId' dla $packageName")
+            appendLine("   page=$page, pageSize=$pageSize")
+
+            val gridColumns = options?.intOrNull(KEY_MAX_GRID)
+            val categoryGridColumns = options?.intOrNull(KEY_MAX_CATEGORY_GRID)
+            val maxItemsRestricted = options?.intOrNull(KEY_MAX_ITEMS_RESTRICTED)
+
+            if (gridColumns != null) appendLine("   GRID: max kolumn=$gridColumns")
+            if (categoryGridColumns != null) {
+                appendLine("   CATEGORY_GRID: max kolumn=$categoryGridColumns")
+            }
+            if (maxItemsRestricted != null) {
+                appendLine("   max elementow przy ograniczeniu=$maxItemsRestricted")
+            }
+
+            // AndroidX exposes a maximum column count, but no current key for
+            // the number of visible grid rows. Keep this explicit instead of guessing.
+            appendLine("   GRID: liczba widocznych wierszy = brak oficjalnego hintu")
+
+            if (options == null || options.isEmpty) {
+                appendLine("   (brak opcji onLoadChildren)")
+            } else {
+                appendBundle(options, "   opcja: ")
+            }
+        })
+    }
+
+    private fun Bundle.intOrNull(key: String): Int? =
+        if (containsKey(key)) getInt(key) else null
+
+    private fun Bundle.fingerprint(): String =
+        keySet().sorted().joinToString("|") { key ->
+            @Suppress("DEPRECATION")
+            "$key=${get(key)}"
+        }
 
     private fun StringBuilder.appendBundle(bundle: Bundle, prefix: String) {
         for (key in bundle.keySet().sorted()) {
