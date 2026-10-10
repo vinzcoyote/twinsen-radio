@@ -515,7 +515,6 @@ object VehicleDiagnosticManager {
                 "trigger" to trigger,
                 "displayId" to display.displayId.toString(),
                 "name" to display.name,
-                "type" to display.type.toString(),
                 "flags" to display.flags.toString(),
                 "state" to display.state.toString(),
                 "rotation" to display.rotation.toString(),
