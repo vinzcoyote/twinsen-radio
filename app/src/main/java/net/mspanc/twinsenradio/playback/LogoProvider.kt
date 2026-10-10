@@ -6,7 +6,10 @@ import android.content.Context
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.ParcelFileDescriptor
@@ -16,6 +19,8 @@ import androidx.core.content.ContextCompat
 import net.mspanc.twinsenradio.R
 import net.mspanc.twinsenradio.data.Station
 import java.io.File
+import java.net.URL
+import kotlin.math.roundToInt
 
 /**
  * Serves station logos under a **stable** `content://.../logo/<id>` address.
@@ -79,20 +84,71 @@ class LogoProvider : ContentProvider() {
     override fun delete(uri: Uri, s: String?, a: Array<out String>?): Int = 0
 
     /**
-     * Turns a resource into a PNG file. We render once - subsequent reads
-     * come from disk, and since the file name contains the resource number,
-     * a rebuild produces a new file.
+     * Renders normal artwork as before, plus 128x128 browse thumbnails used
+     * only for the Android Auto grid experiment.
      */
     private fun renderToCache(context: Context, uri: Uri): File? = runCatching {
-        // The user's own custom artwork already sits ready in the app's
-        // directory - there's nothing to render, just hand it back.
-        if (uri.pathSegments.firstOrNull() == "custom") {
+        val kind = uri.pathSegments.firstOrNull()
+
+        // User-uploaded artwork keeps its original file for playback.
+        if (kind == "custom") {
             val path = uri.getQueryParameter(PARAM_PATH) ?: return@runCatching null
             return@runCatching File(path).takeIf { it.exists() }
         }
+
+        val dir = File(context.cacheDir, "logo").apply { mkdirs() }
+
+        // Remote artwork, including logos supplied by the welle.io M3U.
+        if (kind == "thumb-remote") {
+            val sourceUrl = uri.getQueryParameter(PARAM_URL) ?: return@runCatching null
+            val file = File(
+                dir,
+                "thumb-${uri.lastPathSegment}-${sourceUrl.hashCode()}-$THUMB_SIZE.png"
+            )
+            if (file.exists() && file.length() > 0) return@runCatching file
+
+            val connection = URL(sourceUrl).openConnection().apply {
+                connectTimeout = 5_000
+                readTimeout = 5_000
+                setRequestProperty("User-Agent", "TwinsenRadio/AndroidAuto")
+            }
+            val bitmap = connection.getInputStream().use { input ->
+                BitmapFactory.decodeStream(input)
+            } ?: return@runCatching null
+
+            writeThumbnail(bitmap, file)
+            return@runCatching file
+        }
+
         val resId = uri.getQueryParameter(PARAM_VERSION)?.toIntOrNull()
             ?: R.drawable.logo_placeholder
-        val dir = File(context.cacheDir, "logo").apply { mkdirs() }
+
+        // Built-in station logos get the same 128x128 browse thumbnail.
+        if (kind == "thumb") {
+            val file = File(
+                dir,
+                "thumb-${uri.lastPathSegment}-$resId-$THUMB_SIZE.png"
+            )
+            if (file.exists() && file.length() > 0) return@runCatching file
+
+            val drawable = ContextCompat.getDrawable(context, resId)
+                ?: return@runCatching null
+            val bitmap = (drawable as? BitmapDrawable)?.bitmap ?: run {
+                Bitmap.createBitmap(
+                    THUMB_SIZE,
+                    THUMB_SIZE,
+                    Bitmap.Config.ARGB_8888
+                ).also { bmp ->
+                    drawable.setBounds(0, 0, THUMB_SIZE, THUMB_SIZE)
+                    drawable.draw(Canvas(bmp))
+                }
+            }
+
+            writeThumbnail(bitmap, file)
+            return@runCatching file
+        }
+
+        // Existing behaviour for normal station artwork and action icons.
         val file = File(dir, "${uri.lastPathSegment}-$resId.png")
         if (file.exists() && file.length() > 0) return@runCatching file
 
@@ -108,11 +164,44 @@ class LogoProvider : ContentProvider() {
     }.onFailure { Log.w(TAG, "failed to prepare logo for $uri: ${it.message}") }
         .getOrNull()
 
+    /** Fits the source into a transparent 128x128 square without stretching it. */
+    private fun writeThumbnail(source: Bitmap, file: File) {
+        val scale = minOf(
+            THUMB_SIZE.toFloat() / source.width.coerceAtLeast(1),
+            THUMB_SIZE.toFloat() / source.height.coerceAtLeast(1)
+        )
+        val width = (source.width * scale).roundToInt().coerceAtLeast(1)
+        val height = (source.height * scale).roundToInt().coerceAtLeast(1)
+        val left = (THUMB_SIZE - width) / 2
+        val top = (THUMB_SIZE - height) / 2
+
+        val output = Bitmap.createBitmap(
+            THUMB_SIZE,
+            THUMB_SIZE,
+            Bitmap.Config.ARGB_8888
+        )
+        val canvas = Canvas(output)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        canvas.drawBitmap(
+            source,
+            null,
+            Rect(left, top, left + width, top + height),
+            paint
+        )
+
+        file.outputStream().use { out ->
+            output.compress(Bitmap.CompressFormat.PNG, 100, out)
+        }
+    }
+
     companion object {
         private const val TAG = "LogoProvider"
         private const val PARAM_VERSION = "v"
         private const val PARAM_PATH = "p"
+        private const val PARAM_URL = "u"
+        private const val PARAM_SIZE = "s"
         private const val SIZE = 512
+        private const val THUMB_SIZE = 128
 
         /** Must match android:authorities in the manifest. */
         fun authority(context: Context): String = "${context.packageName}.logos"
@@ -124,6 +213,28 @@ class LogoProvider : ContentProvider() {
          */
         fun uriFor(context: Context, station: Station, resId: Int): Uri =
             build(context, "logo", station.id, resId)
+
+        /** 128x128 thumbnail used only while browsing Android Auto. */
+        fun thumbnailUriFor(context: Context, station: Station, resId: Int): Uri =
+            build(context, "thumb", station.id, resId)
+                .buildUpon()
+                .appendQueryParameter(PARAM_SIZE, THUMB_SIZE.toString())
+                .build()
+
+        /** 128x128 cached copy of a remote M3U/catalog logo. */
+        fun remoteThumbnailUriFor(
+            context: Context,
+            station: Station,
+            sourceUrl: String
+        ): Uri =
+            Uri.Builder()
+                .scheme("content")
+                .authority(authority(context))
+                .appendPath("thumb-remote")
+                .appendPath(station.id)
+                .appendQueryParameter(PARAM_URL, sourceUrl)
+                .appendQueryParameter(PARAM_SIZE, THUMB_SIZE.toString())
+                .build()
 
         /**
          * Address of a button icon in Android Auto. The reason is the same as
