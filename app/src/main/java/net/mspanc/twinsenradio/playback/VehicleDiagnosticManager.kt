@@ -132,7 +132,7 @@ object VehicleDiagnosticManager {
         val started = LocalDateTime.now()
         val version = appVersion(app)
         val safeVersion = version.replace(Regex("[^A-Za-z0-9._-]"), "_")
-        val base = "TwinsenRadio_Diagnostic_\${started.format(stampFile)}_v$safeVersion"
+        val base = "TwinsenRadio_Diagnostic_${started.format(stampFile)}_v$safeVersion"
 
         val txt = createDocument(app, folder, "text/plain", "$base.txt") ?: return false
         val json = createDocument(app, folder, "application/json", "$base.json") ?: return false
@@ -317,7 +317,7 @@ object VehicleDiagnosticManager {
                 }
             }
         }.onFailure {
-            Log.w(TAG, "Cannot list diagnostic reports: \${it.message}")
+            Log.w(TAG, "Cannot list diagnostic reports: ${it.message}")
         }
 
         return result.sortedByDescending { it.fileName }
@@ -327,7 +327,7 @@ object VehicleDiagnosticManager {
         runCatching {
             context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
                 ?: ""
-        }.getOrElse { "Impossible de lire ce rapport : \${it.message}" }
+        }.getOrElse { "Impossible de lire ce rapport : ${it.message}" }
 
     private fun reportDirectory(context: Context): Uri? {
         val raw = context.applicationContext
@@ -352,7 +352,7 @@ object VehicleDiagnosticManager {
             displayName
         )
     }.onFailure {
-        Log.w(TAG, "Cannot create $displayName: \${it.message}")
+        Log.w(TAG, "Cannot create $displayName: ${it.message}")
     }.getOrNull()
 
     private fun extractKnownCapabilities(s: Session, bundle: Bundle?): Boolean {
@@ -433,7 +433,7 @@ object VehicleDiagnosticManager {
         bundle.keySet().sorted().forEach { key ->
             @Suppress("DEPRECATION")
             map[key] = runCatching { bundle.get(key)?.toString() ?: "null" }
-                .getOrElse { "<illisible: \${it.javaClass.simpleName}>" }
+                .getOrElse { "<illisible: ${it.javaClass.simpleName}>" }
         }
         return map
     }
@@ -483,20 +483,20 @@ object VehicleDiagnosticManager {
                 it.write(content)
             }
         }.onFailure {
-            Log.w(TAG, "Cannot write diagnostic report: \${it.message}")
+            Log.w(TAG, "Cannot write diagnostic report: ${it.message}")
         }
     }
 
     private fun buildTextReport(s: Session): String = buildString {
         appendLine("TWINSEN RADIO - DIAGNOSTIC ANDROID AUTO / VEHICULE")
         appendLine("==================================================")
-        appendLine("Début : \${s.startedAt.format(stampHuman)}")
-        appendLine("Version Twinsen Radio : \${s.appVersion}")
+        appendLine("Début : ${s.startedAt.format(stampHuman)}")
+        appendLine("Version Twinsen Radio : ${s.appVersion}")
         appendLine(
             "État : " + if (s.stopReason == null) {
                 "diagnostic en cours"
             } else {
-                "terminé - \${s.stopReason}"
+                "terminé - ${s.stopReason}"
             }
         )
         appendLine()
@@ -521,14 +521,14 @@ object VehicleDiagnosticManager {
         appendLine("--------------------------")
         for (i in 0 until s.events.length()) {
             val event = s.events.getJSONObject(i)
-            appendLine("[\${event.optString("time")}] \${event.optString("source")} - \${event.optString("package")}")
+            appendLine("[${event.optString("time")}] ${event.optString("source")} - ${event.optString("package")}")
             val details = event.optJSONObject("details")
             details?.keys()?.asSequence()?.toList()?.sorted()?.forEach { key ->
-                appendLine("  $key = \${details.optString(key)}")
+                appendLine("  $key = ${details.optString(key)}")
             }
             val extras = event.optJSONObject("extras")
             extras?.keys()?.asSequence()?.toList()?.sorted()?.forEach { key ->
-                appendLine("  $key = \${extras.optString(key)}")
+                appendLine("  $key = ${extras.optString(key)}")
             }
         }
     }
