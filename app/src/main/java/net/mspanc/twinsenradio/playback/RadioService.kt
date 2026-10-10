@@ -942,6 +942,14 @@ class RadioService : MediaLibraryService() {
                 controller.interfaceVersion,
                 controller.connectionHints
             )
+            VehicleDiagnosticManager.recordConnection(
+                this@RadioService,
+                controller.packageName,
+                controller.uid,
+                controller.controllerVersion,
+                controller.interfaceVersion,
+                controller.connectionHints
+            )
             val commands = MediaSession.ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS
                 .buildUpon()
                 .add(CMD_TOGGLE_DIAG)
@@ -952,6 +960,13 @@ class RadioService : MediaLibraryService() {
                 // A freshly connected controller must get the current star state
                 .setCustomLayout(customLayout())
                 .build()
+        }
+
+        override fun onDisconnected(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ) {
+            VehicleDiagnosticManager.controllerDisconnected(controller.packageName)
         }
 
         override fun onCustomCommand(
@@ -1040,6 +1055,11 @@ class RadioService : MediaLibraryService() {
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<MediaItem>> {
             ConnectionLog.libraryRoot(this@RadioService, browser.packageName, params?.extras)
+            VehicleDiagnosticManager.recordRoot(
+                this@RadioService,
+                browser.packageName,
+                params?.extras
+            )
             Log.i(
                 TAG,
                 "onGetLibraryRoot od ${browser.packageName} (uid=${browser.uid}), " +
@@ -1084,6 +1104,15 @@ class RadioService : MediaLibraryService() {
             pageSize: Int,
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            VehicleDiagnosticManager.recordChildren(
+                this@RadioService,
+                browser.packageName,
+                parentId,
+                page,
+                pageSize,
+                params?.extras
+            )
+
             val children: List<MediaItem> = when {
                 // Android Auto home: favourite stations immediately, plus one
                 // secondary entry giving access to the complete station list.
@@ -1224,6 +1253,14 @@ class RadioService : MediaLibraryService() {
             query: String,
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<Void>> {
+            VehicleDiagnosticManager.recordSearch(
+                this@RadioService,
+                browser.packageName,
+                query,
+                null,
+                null,
+                params?.extras
+            )
             val hits = repo.search(query).size
             session.notifySearchResultChanged(browser, query, hits, params)
             return Futures.immediateFuture(LibraryResult.ofVoid())
@@ -1237,6 +1274,14 @@ class RadioService : MediaLibraryService() {
             pageSize: Int,
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            VehicleDiagnosticManager.recordSearch(
+                this@RadioService,
+                browser.packageName,
+                query,
+                page,
+                pageSize,
+                params?.extras
+            )
             val hits = repo.search(query).map(::browseItem)
             return Futures.immediateFuture(
                 LibraryResult.ofItemList(
