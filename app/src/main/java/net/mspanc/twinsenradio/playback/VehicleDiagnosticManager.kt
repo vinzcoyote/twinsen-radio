@@ -51,6 +51,27 @@ object VehicleDiagnosticManager {
         var stopReason: String? = null
     )
 
+    private data class CachedConnection(
+        val packageName: String,
+        val uid: Int,
+        val controllerVersion: Int,
+        val interfaceVersion: Int,
+        val hints: Bundle
+    )
+
+    private data class CachedRoot(
+        val packageName: String,
+        val hints: Bundle?
+    )
+
+    private data class CachedChildren(
+        val packageName: String,
+        val parentId: String,
+        val page: Int,
+        val pageSize: Int,
+        val hints: Bundle?
+    )
+
     private const val PREFS = "vehicle_diagnostics"
     private const val KEY_FOLDER_URI = "folder_uri"
     private const val TAG = "VehicleDiagnostic"
@@ -89,6 +110,9 @@ object VehicleDiagnosticManager {
     private var session: Session? = null
     private var lastStopReason: String? = null
     private val listeners = linkedSetOf<() -> Unit>()
+    private var cachedConnection: CachedConnection? = null
+    private var cachedRoot: CachedRoot? = null
+    private val cachedChildren = linkedMapOf<String, CachedChildren>()
 
     fun addListener(listener: () -> Unit) {
         listeners += listener
@@ -163,6 +187,34 @@ object VehicleDiagnosticManager {
             extras = null,
             details = linkedMapOf("started" to started.format(stampHuman))
         )
+
+        // Android Auto may already have sent its root hints before the user opened
+        // Settings and pressed "Create diagnostic". Replay the latest observations
+        // so those capabilities are not lost.
+        cachedConnection?.let {
+            recordConnection(
+                app,
+                it.packageName,
+                it.uid,
+                it.controllerVersion,
+                it.interfaceVersion,
+                Bundle(it.hints)
+            )
+        }
+        cachedRoot?.let {
+            recordRoot(app, it.packageName, it.hints?.let(::Bundle))
+        }
+        cachedChildren.values.forEach {
+            recordChildren(
+                app,
+                it.packageName,
+                it.parentId,
+                it.page,
+                it.pageSize,
+                it.hints?.let(::Bundle)
+            )
+        }
+
         flush(newSession)
         scheduleTimeout(newSession)
         notifyChanged()
@@ -181,6 +233,13 @@ object VehicleDiagnosticManager {
         interfaceVersion: Int,
         hints: Bundle
     ) {
+        cachedConnection = CachedConnection(
+            packageName,
+            uid,
+            controllerVersion,
+            interfaceVersion,
+            Bundle(hints)
+        )
         val s = session ?: return
         var changed = false
         changed = addCapability(s, "controller.$packageName.uid", uid.toString()) || changed
@@ -214,6 +273,7 @@ object VehicleDiagnosticManager {
         packageName: String,
         hints: Bundle?
     ) {
+        cachedRoot = CachedRoot(packageName, hints?.let(::Bundle))
         val s = session ?: return
         s.browserPackages += packageName
         var changed = extractKnownCapabilities(s, hints)
@@ -229,6 +289,13 @@ object VehicleDiagnosticManager {
         pageSize: Int,
         hints: Bundle?
     ) {
+        cachedChildren[parentId] = CachedChildren(
+            packageName,
+            parentId,
+            page,
+            pageSize,
+            hints?.let(::Bundle)
+        )
         val s = session ?: return
         s.browserPackages += packageName
         var changed = false
@@ -270,6 +337,10 @@ object VehicleDiagnosticManager {
     }
 
     fun controllerDisconnected(packageName: String) {
+        if (cachedConnection?.packageName == packageName) cachedConnection = null
+        if (cachedRoot?.packageName == packageName) cachedRoot = null
+        cachedChildren.entries.removeAll { it.value.packageName == packageName }
+
         val s = session ?: return
         if (packageName in s.browserPackages) {
             addEvent(
