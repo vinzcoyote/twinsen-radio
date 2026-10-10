@@ -2,6 +2,9 @@ name: Build Twinsen Radio APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/android-auto-capability-diagnostics
 
 jobs:
   build:
