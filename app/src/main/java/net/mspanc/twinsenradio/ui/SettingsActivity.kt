@@ -1,13 +1,20 @@
 package net.mspanc.twinsenradio.ui
 
+import android.content.Intent
+import android.graphics.Typeface
 import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.ScrollView
+import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
@@ -22,6 +29,7 @@ import net.mspanc.twinsenradio.data.Prefs
 import net.mspanc.twinsenradio.data.StationRepository
 import net.mspanc.twinsenradio.databinding.ActivitySettingsBinding
 import net.mspanc.twinsenradio.playback.DiagnosticFields
+import net.mspanc.twinsenradio.playback.VehicleDiagnosticManager
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -30,6 +38,45 @@ class SettingsActivity : AppCompatActivity() {
 
     /** The selected index of each list - MaterialAutoCompleteTextView holds text, not a position. */
     private val chosen = HashMap<Int, Int>()
+
+    private enum class FolderAction {
+        NONE,
+        START_DIAGNOSTIC,
+        SHOW_REPORTS
+    }
+
+    private var pendingFolderAction = FolderAction.NONE
+
+    private val diagnosticListener: () -> Unit = {
+        if (::b.isInitialized) {
+            renderVehicleDiagnostic()
+            if (b.diagReportsList.visibility == View.VISIBLE) {
+                renderDiagnosticReports()
+            }
+        }
+    }
+
+    private val folderPicker =
+        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            val action = pendingFolderAction
+            pendingFolderAction = FolderAction.NONE
+
+            if (uri == null) return@registerForActivityResult
+
+            val flags =
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            runCatching {
+                contentResolver.takePersistableUriPermission(uri, flags)
+            }
+
+            VehicleDiagnosticManager.setReportDirectory(this, uri)
+
+            when (action) {
+                FolderAction.START_DIAGNOSTIC -> startVehicleDiagnostic()
+                FolderAction.SHOW_REPORTS -> renderDiagnosticReports()
+                FolderAction.NONE -> Unit
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +95,7 @@ class SettingsActivity : AppCompatActivity() {
 
             insets
         }
-        
+
         prefs = Prefs(this)
 
         b.toolbar.setNavigationOnClickListener { finish() }
@@ -79,11 +126,26 @@ class SettingsActivity : AppCompatActivity() {
         bind(b.ddArtwork, ArtworkMode.LABELS, prefs.artworkMode)
         updateClockOptionsEnabled(prefs.clockFace)
 
-        // --- diagnostics -----------------------------------------------------
+        // --- metadata diagnostics ---------------------------------------------
         b.swDiag.isChecked = prefs.diagnosticMode
         b.swDiagApi.isChecked = prefs.diagnosticShowApiName
         b.swDiagApi.setOnCheckedChangeListener { _, _ -> renderLegend() }
         renderLegend()
+
+        // --- Android Auto / vehicle capability diagnostics ---------------------
+        b.btnVehicleDiagStart.setOnClickListener {
+            if (VehicleDiagnosticManager.status().active) {
+                VehicleDiagnosticManager.stopManual()
+                renderVehicleDiagnostic()
+                renderDiagnosticReports()
+            } else {
+                ensureDiagnosticFolder(FolderAction.START_DIAGNOSTIC)
+            }
+        }
+        b.btnVehicleDiagReports.setOnClickListener {
+            ensureDiagnosticFolder(FolderAction.SHOW_REPORTS)
+        }
+        renderVehicleDiagnostic()
 
         // --- the rest ----------------------------------------------------------
         bind(b.ddBuffer, BufferProfile.ALL.map { it.label }, prefs.bufferProfile)
@@ -91,6 +153,17 @@ class SettingsActivity : AppCompatActivity() {
         renderHidden()
 
         b.btnSave.setOnClickListener { save() }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        VehicleDiagnosticManager.addListener(diagnosticListener)
+        renderVehicleDiagnostic()
+    }
+
+    override fun onStop() {
+        VehicleDiagnosticManager.removeListener(diagnosticListener)
+        super.onStop()
     }
 
     /**
@@ -137,6 +210,113 @@ class SettingsActivity : AppCompatActivity() {
             it.alpha = if (usesClock) 1f else 0.4f
         }
     }
+
+    private fun ensureDiagnosticFolder(action: FolderAction) {
+        if (VehicleDiagnosticManager.hasReportDirectory(this)) {
+            when (action) {
+                FolderAction.START_DIAGNOSTIC -> startVehicleDiagnostic()
+                FolderAction.SHOW_REPORTS -> renderDiagnosticReports()
+                FolderAction.NONE -> Unit
+            }
+            return
+        }
+
+        pendingFolderAction = action
+        Toast.makeText(this, R.string.opt_vehicle_diag_choose_folder, Toast.LENGTH_LONG).show()
+        folderPicker.launch(null)
+    }
+
+    private fun startVehicleDiagnostic() {
+        if (!VehicleDiagnosticManager.start(this)) {
+            pendingFolderAction = FolderAction.START_DIAGNOSTIC
+            Toast.makeText(this, R.string.opt_vehicle_diag_folder_error, Toast.LENGTH_LONG).show()
+            folderPicker.launch(null)
+            return
+        }
+
+        b.diagReportsList.visibility = View.GONE
+        renderVehicleDiagnostic()
+        Toast.makeText(this, R.string.opt_vehicle_diag_started, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun renderVehicleDiagnostic() {
+        val status = VehicleDiagnosticManager.status()
+        if (status.active) {
+            b.tvVehicleDiagStatus.text = getString(
+                R.string.opt_vehicle_diag_running,
+                status.started.orEmpty(),
+                status.eventCount
+            )
+            b.btnVehicleDiagStart.setText(R.string.opt_vehicle_diag_stop)
+        } else {
+            b.tvVehicleDiagStatus.text =
+                status.lastStopReason?.let {
+                    getString(R.string.opt_vehicle_diag_stopped, it)
+                } ?: getString(R.string.opt_vehicle_diag_idle)
+            b.btnVehicleDiagStart.setText(R.string.opt_vehicle_diag_start)
+        }
+    }
+
+    private fun renderDiagnosticReports() {
+        val reports = VehicleDiagnosticManager.listReports(this)
+        b.diagReportsList.removeAllViews()
+        b.diagReportsList.visibility = View.VISIBLE
+
+        if (reports.isEmpty()) {
+            b.diagReportsList.addView(
+                TextView(this).apply {
+                    text = getString(R.string.opt_vehicle_diag_no_reports)
+                    setPadding(0, dp(8), 0, 0)
+                }
+            )
+            return
+        }
+
+        reports.forEach { report ->
+            b.diagReportsList.addView(
+                MaterialButton(
+                    this,
+                    null,
+                    com.google.android.material.R.attr.materialButtonOutlinedStyle
+                ).apply {
+                    text = getString(
+                        R.string.opt_vehicle_diag_report_entry,
+                        report.displayDate,
+                        report.appVersion
+                    )
+                    isAllCaps = false
+                    setOnClickListener { showDiagnosticReport(report) }
+                }
+            )
+        }
+    }
+
+    private fun showDiagnosticReport(report: VehicleDiagnosticManager.ReportEntry) {
+        val textView = TextView(this).apply {
+            text = VehicleDiagnosticManager.readReport(this@SettingsActivity, report.uri)
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+        }
+        val scroll = ScrollView(this).apply {
+            addView(textView)
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(
+                getString(
+                    R.string.opt_vehicle_diag_report_entry,
+                    report.displayDate,
+                    report.appVersion
+                )
+            )
+            .setView(scroll)
+            .setPositiveButton(R.string.action_ok, null)
+            .show()
+    }
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
 
     /**
      * Stations removed from the list. Built-in ones can't be deleted, so they're
