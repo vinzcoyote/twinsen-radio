@@ -1203,6 +1203,12 @@ class RadioService : MediaLibraryService() {
             parentId: String,
             params: LibraryParams?
         ): ListenableFuture<LibraryResult<Void>> {
+            VehicleDiagnosticManager.recordSubscription(
+                this@RadioService,
+                browser.packageName,
+                parentId,
+                params?.extras
+            )
             Log.i(TAG, "SUBSKRYPCJA $parentId od ${browser.packageName}")
             return Futures.immediateFuture(LibraryResult.ofVoid())
         }
@@ -1212,6 +1218,7 @@ class RadioService : MediaLibraryService() {
             browser: MediaSession.ControllerInfo,
             parentId: String
         ): ListenableFuture<LibraryResult<Void>> {
+            VehicleDiagnosticManager.recordUnsubscribe(browser.packageName, parentId)
             Log.i(TAG, "KONIEC SUBSKRYPCJI $parentId od ${browser.packageName}")
             return Futures.immediateFuture(LibraryResult.ofVoid())
         }

@@ -72,6 +72,12 @@ object VehicleDiagnosticManager {
         val hints: Bundle?
     )
 
+    private data class CachedSubscription(
+        val packageName: String,
+        val parentId: String,
+        val hints: Bundle?
+    )
+
     private const val PREFS = "vehicle_diagnostics"
     private const val KEY_FOLDER_URI = "folder_uri"
     private const val TAG = "VehicleDiagnostic"
@@ -113,6 +119,7 @@ object VehicleDiagnosticManager {
     private val cachedConnections = linkedMapOf<String, CachedConnection>()
     private val cachedRoots = linkedMapOf<String, CachedRoot>()
     private val cachedChildren = linkedMapOf<String, CachedChildren>()
+    private val cachedSubscriptions = linkedMapOf<String, CachedSubscription>()
 
     fun addListener(listener: () -> Unit) {
         listeners += listener
@@ -211,6 +218,14 @@ object VehicleDiagnosticManager {
                 it.parentId,
                 it.page,
                 it.pageSize,
+                it.hints?.let(::Bundle)
+            )
+        }
+        cachedSubscriptions.values.forEach {
+            recordSubscription(
+                app,
+                it.packageName,
+                it.parentId,
                 it.hints?.let(::Bundle)
             )
         }
@@ -315,6 +330,37 @@ object VehicleDiagnosticManager {
         if (changed) onNewInformation(s)
     }
 
+    fun recordSubscription(
+        context: Context,
+        packageName: String,
+        parentId: String,
+        hints: Bundle?
+    ) {
+        cachedSubscriptions["$packageName|$parentId"] = CachedSubscription(
+            packageName,
+            parentId,
+            hints?.let(::Bundle)
+        )
+        val s = session ?: return
+        s.browserPackages += packageName
+        var changed = extractKnownCapabilities(s, hints)
+        changed = addEvent(
+            s,
+            "subscribe",
+            packageName,
+            hints,
+            linkedMapOf("parentId" to parentId)
+        ) || changed
+        if (changed) onNewInformation(s)
+    }
+
+    fun recordUnsubscribe(
+        packageName: String,
+        parentId: String
+    ) {
+        cachedSubscriptions.remove("$packageName|$parentId")
+    }
+
     fun recordSearch(
         context: Context,
         packageName: String,
@@ -340,6 +386,7 @@ object VehicleDiagnosticManager {
         cachedConnections.remove(packageName)
         cachedRoots.remove(packageName)
         cachedChildren.entries.removeAll { it.value.packageName == packageName }
+        cachedSubscriptions.entries.removeAll { it.value.packageName == packageName }
 
         val s = session ?: return
         if (packageName in s.browserPackages) {
