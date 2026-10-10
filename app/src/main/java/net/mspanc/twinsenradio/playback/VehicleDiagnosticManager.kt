@@ -110,8 +110,8 @@ object VehicleDiagnosticManager {
     private var session: Session? = null
     private var lastStopReason: String? = null
     private val listeners = linkedSetOf<() -> Unit>()
-    private var cachedConnection: CachedConnection? = null
-    private var cachedRoot: CachedRoot? = null
+    private val cachedConnections = linkedMapOf<String, CachedConnection>()
+    private val cachedRoots = linkedMapOf<String, CachedRoot>()
     private val cachedChildren = linkedMapOf<String, CachedChildren>()
 
     fun addListener(listener: () -> Unit) {
@@ -191,7 +191,7 @@ object VehicleDiagnosticManager {
         // Android Auto may already have sent its root hints before the user opened
         // Settings and pressed "Create diagnostic". Replay the latest observations
         // so those capabilities are not lost.
-        cachedConnection?.let {
+        cachedConnections.values.forEach {
             recordConnection(
                 app,
                 it.packageName,
@@ -201,7 +201,7 @@ object VehicleDiagnosticManager {
                 Bundle(it.hints)
             )
         }
-        cachedRoot?.let {
+        cachedRoots.values.forEach {
             recordRoot(app, it.packageName, it.hints?.let(::Bundle))
         }
         cachedChildren.values.forEach {
@@ -233,7 +233,7 @@ object VehicleDiagnosticManager {
         interfaceVersion: Int,
         hints: Bundle
     ) {
-        cachedConnection = CachedConnection(
+        cachedConnections[packageName] = CachedConnection(
             packageName,
             uid,
             controllerVersion,
@@ -273,7 +273,7 @@ object VehicleDiagnosticManager {
         packageName: String,
         hints: Bundle?
     ) {
-        cachedRoot = CachedRoot(packageName, hints?.let(::Bundle))
+        cachedRoots[packageName] = CachedRoot(packageName, hints?.let(::Bundle))
         val s = session ?: return
         s.browserPackages += packageName
         var changed = extractKnownCapabilities(s, hints)
@@ -289,7 +289,7 @@ object VehicleDiagnosticManager {
         pageSize: Int,
         hints: Bundle?
     ) {
-        cachedChildren[parentId] = CachedChildren(
+        cachedChildren["$packageName|$parentId"] = CachedChildren(
             packageName,
             parentId,
             page,
@@ -337,8 +337,8 @@ object VehicleDiagnosticManager {
     }
 
     fun controllerDisconnected(packageName: String) {
-        if (cachedConnection?.packageName == packageName) cachedConnection = null
-        if (cachedRoot?.packageName == packageName) cachedRoot = null
+        cachedConnections.remove(packageName)
+        cachedRoots.remove(packageName)
         cachedChildren.entries.removeAll { it.value.packageName == packageName }
 
         val s = session ?: return
