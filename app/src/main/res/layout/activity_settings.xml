@@ -217,6 +217,64 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
+
+                <!-- ============ Diagnostic Android Auto / véhicule ============ -->
+                <com.google.android.material.card.MaterialCardView
+                    style="@style/Widget.Material3.CardView.Filled"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            style="@style/SectionHeader"
+                            android:text="@string/opt_sec_vehicle_diag" />
+
+                        <TextView
+                            style="@style/SectionNote"
+                            android:text="@string/opt_vehicle_diag_intro" />
+
+                        <TextView
+                            android:id="@+id/tvVehicleDiagStatus"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:background="?attr/colorSurfaceContainerHighest"
+                            android:padding="12dp"
+                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnVehicleDiagStart"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/opt_vehicle_diag_start" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnVehicleDiagReports"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/opt_vehicle_diag_reports" />
+
+                        <LinearLayout
+                            android:id="@+id/diagReportsList"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="vertical"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
+
+                </com.google.android.material.card.MaterialCardView>
+
                 <!-- ============ Tryb diagnostyczny ============ -->
                 <com.google.android.material.card.MaterialCardView
                     style="@style/Widget.Material3.CardView.Filled"
