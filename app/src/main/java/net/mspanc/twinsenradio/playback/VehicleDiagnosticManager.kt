@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.DocumentsContract
 import android.util.Log
+import androidx.car.app.features.CarFeatures
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDateTime
@@ -187,6 +188,20 @@ object VehicleDiagnosticManager {
         addCapability(newSession, "device.model", android.os.Build.MODEL ?: "")
         androidAutoVersion(app)?.let {
             addCapability(newSession, "android_auto.version", it)
+        }
+        runCatching {
+            CarFeatures.isFeatureEnabled(
+                app,
+                CarFeatures.FEATURE_CAR_APP_LIBRARY_MEDIA
+            )
+        }.onSuccess {
+            addCapability(newSession, "car_app.media_feature_enabled", it.toString())
+        }.onFailure {
+            addCapability(
+                newSession,
+                "car_app.media_feature_enabled",
+                "<erreur: ${it.javaClass.simpleName}>"
+            )
         }
 
         addEvent(
@@ -373,9 +388,27 @@ object VehicleDiagnosticManager {
         cachedSubscriptions.remove("$packageName|$parentId")
     }
 
+    fun recordCarAppLifecycle(
+        stage: String,
+        hostPackageName: String? = null,
+        details: Map<String, String> = emptyMap()
+    ) {
+        val s = session ?: return
+        val merged = linkedMapOf("stage" to stage)
+        merged.putAll(details)
+        var changed = addEvent(
+            s,
+            "car_app_lifecycle",
+            hostPackageName ?: "androidx.car.app",
+            null,
+            merged
+        )
+        changed = addCapability(s, "car_app.lifecycle.last_stage", stage) || changed
+        if (changed) onNewInformation(s)
+    }
+
     /**
-     * Records information exposed by a CarAppService session without making
-     * this diagnostic manager itself depend on androidx.car.app.
+     * Records information exposed by a CarAppService session.
      */
     fun recordCarAppSession(
         hostPackageName: String?,
