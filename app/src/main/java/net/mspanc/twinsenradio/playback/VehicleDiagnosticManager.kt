@@ -433,6 +433,45 @@ object VehicleDiagnosticManager {
         if (changed) onNewInformation(s)
     }
 
+    fun recordCarAppGridVisibility(
+        itemSize: String,
+        startIndex: Int,
+        endIndexExclusive: Int,
+        carApiLevel: Int,
+        hostPackage: String?
+    ) {
+        val s = session ?: return
+        val visibleCount = (endIndexExclusive - startIndex).coerceAtLeast(0)
+        var changed = false
+
+        changed = addCapability(s, "car_app.api_level", carApiLevel.toString()) || changed
+        hostPackage?.let {
+            changed = addCapability(s, "car_app.host.package", it) || changed
+        }
+
+        val key = "car_app.grid.${itemSize.lowercase()}.visible_count_max"
+        val previous = s.capabilities[key]?.toIntOrNull() ?: -1
+        if (visibleCount > previous) {
+            changed = addCapability(s, key, visibleCount.toString()) || changed
+        }
+
+        changed = addEvent(
+            s,
+            "car_app_grid_visibility",
+            hostPackage ?: "androidx.car.app",
+            null,
+            linkedMapOf(
+                "itemSize" to itemSize,
+                "startIndex" to startIndex.toString(),
+                "endIndexExclusive" to endIndexExclusive.toString(),
+                "visibleCount" to visibleCount.toString(),
+                "carApiLevel" to carApiLevel.toString()
+            )
+        ) || changed
+
+        if (changed) onNewInformation(s)
+    }
+
     fun recordSearch(
         context: Context,
         packageName: String,
