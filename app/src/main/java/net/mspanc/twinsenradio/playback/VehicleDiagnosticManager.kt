@@ -373,6 +373,66 @@ object VehicleDiagnosticManager {
         cachedSubscriptions.remove("$packageName|$parentId")
     }
 
+    /**
+     * Records information exposed by a CarAppService session without making
+     * this diagnostic manager itself depend on androidx.car.app.
+     */
+    fun recordCarAppSession(
+        hostPackageName: String?,
+        hostUid: Int?,
+        carAppApiLevel: Int,
+        sessionId: String,
+        displayType: String,
+        supportedTemplates: Collection<String>?
+    ) {
+        val s = session ?: return
+        var changed = false
+
+        changed = addCapability(s, "car_app.api_level", carAppApiLevel.toString()) || changed
+        hostPackageName?.let {
+            changed = addCapability(s, "car_app.host.package", it) || changed
+        }
+        hostUid?.let {
+            changed = addCapability(s, "car_app.host.uid", it.toString()) || changed
+        }
+        changed = addCapability(
+            s,
+            "car_app.session.$sessionId.display_type",
+            displayType
+        ) || changed
+
+        val templates = supportedTemplates
+            ?.filter { it.isNotBlank() }
+            ?.sorted()
+            ?.joinToString(", ")
+        if (templates != null) {
+            changed = addCapability(
+                s,
+                "car_app.session.$sessionId.supported_templates",
+                templates.ifBlank { "(aucun)" }
+            ) || changed
+        }
+
+        val details = linkedMapOf(
+            "sessionId" to sessionId,
+            "displayType" to displayType,
+            "carAppApiLevel" to carAppApiLevel.toString()
+        )
+        hostPackageName?.let { details["hostPackage"] = it }
+        hostUid?.let { details["hostUid"] = it.toString() }
+        if (templates != null) details["supportedTemplates"] = templates.ifBlank { "(aucun)" }
+
+        changed = addEvent(
+            s,
+            "car_app_session",
+            hostPackageName ?: "androidx.car.app",
+            null,
+            details
+        ) || changed
+
+        if (changed) onNewInformation(s)
+    }
+
     fun recordSearch(
         context: Context,
         packageName: String,
@@ -778,9 +838,14 @@ object VehicleDiagnosticManager {
             .put("events", s.events)
             .put(
                 "notes",
-                JSONArray().put(
-                    "La présence d'un écran secondaire/combiné n'est pas déduite sans hint explicite."
-                )
+                JSONArray()
+                    .put(
+                        "La présence d'un écran secondaire/combiné n'est pas déduite sans hint explicite."
+                    )
+                    .put(
+                        "Avec CarAppService, les sessions MAIN/CLUSTER, l'hôte, le niveau d'API Car App " +
+                            "et les templates supportés sont enregistrés lorsqu'ils sont exposés par l'hôte."
+                    )
             )
     }
 
