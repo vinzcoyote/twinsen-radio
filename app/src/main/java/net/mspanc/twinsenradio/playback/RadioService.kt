@@ -833,7 +833,9 @@ class RadioService : MediaLibraryService() {
 
     private fun browseNodeChildCount(parentId: String): Int = when {
         // Home = favourite stations + the single "All stations" entry.
-        parentId == NODE_ROOT -> repo.favourites().size + 1
+        parentId == NODE_ROOT -> 4
+        parentId in GRID_TEST_NODES -> repo.all().size
+        parentId.startsWith(NODE_TEST_D_ITEM_PREFIX) -> 1
         parentId == NODE_FAVOURITES -> repo.favourites().size
         parentId == NODE_ALL -> repo.all().size
         parentId == NODE_RECENT -> repo.recent().size
@@ -1114,17 +1116,44 @@ class RadioService : MediaLibraryService() {
             )
 
             val children: List<MediaItem> = when {
-                // Android Auto home: favourite stations immediately, plus one
-                // secondary entry giving access to the complete station list.
-                parentId == NODE_ROOT ->
-                    repo.favourites().map(::browseItem) +
-                        browseNode(
-                            NODE_ALL,
-                            getString(net.mspanc.twinsenradio.R.string.node_all),
-                            MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS
-                        )
+                // Experimental Android Auto density test. Each folder exposes
+                // the same stations, changing only the browse metadata shape.
+                parentId == NODE_ROOT -> listOf(
+                    testNode(
+                        NODE_TEST_A,
+                        "A · actuel · RADIO_STATION complet"
+                    ),
+                    testNode(
+                        NODE_TEST_B,
+                        "B · RADIO_STATION minimal"
+                    ),
+                    testNode(
+                        NODE_TEST_C,
+                        "C · MUSIC minimal"
+                    ),
+                    testNode(
+                        NODE_TEST_D,
+                        "D · ALBUM browsable"
+                    )
+                )
 
-                // Kept for compatibility with an old cached Android Auto tree.
+                parentId == NODE_TEST_A -> repo.all().map(::browseItem)
+                parentId == NODE_TEST_B -> repo.all().map {
+                    browseItemMinimal(it, MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+                }
+                parentId == NODE_TEST_C -> repo.all().map {
+                    browseItemMinimal(it, MediaMetadata.MEDIA_TYPE_MUSIC)
+                }
+                parentId == NODE_TEST_D -> repo.all().map(::browseAlbumTestItem)
+
+                // A D item is a browsable album-like tile. Opening it exposes the
+                // real playable radio station one level below.
+                parentId.startsWith(NODE_TEST_D_ITEM_PREFIX) -> {
+                    val stationMediaId = parentId.removePrefix(NODE_TEST_D_ITEM_PREFIX)
+                    repo.byMediaId(stationMediaId)?.let { listOf(browseItem(it)) } ?: emptyList()
+                }
+
+                // Kept for compatibility with cached/system requests.
                 parentId == NODE_FAVOURITES -> repo.favourites().map(::browseItem)
                 parentId == NODE_ALL -> repo.all().map(::browseItem)
                 parentId == NODE_RECENT -> repo.recent().map(::browseItem)
@@ -1239,7 +1268,16 @@ class RadioService : MediaLibraryService() {
                     getString(net.mspanc.twinsenradio.R.string.node_all),
                     MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS
                 )
-                else -> null
+                NODE_TEST_A -> testNode(NODE_TEST_A, "A · actuel · RADIO_STATION complet")
+                NODE_TEST_B -> testNode(NODE_TEST_B, "B · RADIO_STATION minimal")
+                NODE_TEST_C -> testNode(NODE_TEST_C, "C · MUSIC minimal")
+                NODE_TEST_D -> testNode(NODE_TEST_D, "D · ALBUM browsable")
+                else -> if (mediaId.startsWith(NODE_TEST_D_ITEM_PREFIX)) {
+                    val stationMediaId = mediaId.removePrefix(NODE_TEST_D_ITEM_PREFIX)
+                    repo.byMediaId(stationMediaId)?.let(::browseAlbumTestItem)
+                } else {
+                    null
+                }
             }
             if (node != null) {
                 return Futures.immediateFuture(
@@ -1344,6 +1382,63 @@ class RadioService : MediaLibraryService() {
             )
             .build()
 
+    private fun testNode(id: String, title: String): MediaItem =
+        MediaItem.Builder()
+            .setMediaId(id)
+            .setMediaMetadata(
+                metadata.forFolder(
+                    title,
+                    MediaMetadata.MEDIA_TYPE_FOLDER_MIXED
+                )
+            )
+            .build()
+
+    /**
+     * Minimal playable item. It deliberately keeps the same favourite custom
+     * action as the normal item so the A/B/C comparison only changes metadata.
+     */
+    private fun browseItemMinimal(station: Station, mediaType: Int): MediaItem {
+        val isFav = station.id in prefs.favourites
+        val extras = Bundle().apply {
+            putStringArrayList(
+                KEY_ACTION_ID_LIST,
+                arrayListOf(if (isFav) ACTION_UNFAVOURITE else ACTION_FAVOURITE)
+            )
+        }
+        val itemMetadata = MediaMetadata.Builder()
+            .setTitle(station.name)
+            .setIsBrowsable(false)
+            .setIsPlayable(true)
+            .setMediaType(mediaType)
+            .setArtworkUri(metadata.logoUri(station))
+            .setExtras(extras)
+            .build()
+
+        return MediaItem.Builder()
+            .setMediaId(station.mediaId)
+            .setMediaMetadata(itemMetadata)
+            .build()
+    }
+
+    /**
+     * Browsable album-like tile for test D. It uses the same station artwork
+     * and title, but Android Auto sees it as a browsable album instead of a
+     * directly playable radio station.
+     */
+    private fun browseAlbumTestItem(station: Station): MediaItem =
+        MediaItem.Builder()
+            .setMediaId(NODE_TEST_D_ITEM_PREFIX + station.mediaId)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(station.name)
+                    .setIsBrowsable(true)
+                    .setIsPlayable(false)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_ALBUM)
+                    .setArtworkUri(metadata.logoUri(station))
+                    .build()
+            )
+            .build()
+
     /**
      * Browsable node carrying its own grid/list toggle action. Android Auto
      * renders actions attached to a browse node in the secondary toolbar.
@@ -1370,7 +1465,11 @@ class RadioService : MediaLibraryService() {
             .build()
 
     private fun nodeUsesGrid(nodeId: String): Boolean =
-        if (nodeId == NODE_ALL) prefs.aaAllStationsGrid else prefs.aaFavouritesGrid
+        when (nodeId) {
+            NODE_TEST_A, NODE_TEST_B, NODE_TEST_C, NODE_TEST_D -> true
+            NODE_ALL -> prefs.aaAllStationsGrid
+            else -> prefs.aaFavouritesGrid
+        }
 
     /**
      * A list item with a "favourite" action available directly from the context
@@ -1455,10 +1554,14 @@ class RadioService : MediaLibraryService() {
             // The only browsable item on the home screen is "All stations".
             // Keeping browsable nodes as a simple list makes that entry discreet,
             // while playable radio stations use the user's grid/list choice.
-            putInt(ContentStyle.EXTRA_BROWSABLE_HINT, ContentStyle.LIST)
+            val testGrid = parentId in GRID_TEST_NODES
+            putInt(
+                ContentStyle.EXTRA_BROWSABLE_HINT,
+                if (testGrid) ContentStyle.GRID else ContentStyle.LIST
+            )
             putInt(
                 ContentStyle.EXTRA_PLAYABLE_HINT,
-                if (nodeUsesGrid(parentId)) ContentStyle.GRID else ContentStyle.LIST
+                if (testGrid || nodeUsesGrid(parentId)) ContentStyle.GRID else ContentStyle.LIST
             )
             putParcelableArrayList(KEY_ACTION_ROOT_LIST, browseActionsRootList())
         }
@@ -1539,6 +1642,27 @@ class RadioService : MediaLibraryService() {
         const val NODE_GENRES = "/genres"
         const val NODE_GENRE_PREFIX = "/genre/"
 
-        private val BROWSE_NODES = listOf(NODE_FAVOURITES, NODE_ALL, NODE_RECENT, NODE_GENRES)
+        private const val NODE_TEST_A = "/gridtest/a"
+        private const val NODE_TEST_B = "/gridtest/b"
+        private const val NODE_TEST_C = "/gridtest/c"
+        private const val NODE_TEST_D = "/gridtest/d"
+        private const val NODE_TEST_D_ITEM_PREFIX = "/gridtest/d/item/"
+        private val GRID_TEST_NODES = setOf(
+            NODE_TEST_A,
+            NODE_TEST_B,
+            NODE_TEST_C,
+            NODE_TEST_D
+        )
+
+        private val BROWSE_NODES = listOf(
+            NODE_FAVOURITES,
+            NODE_ALL,
+            NODE_RECENT,
+            NODE_GENRES,
+            NODE_TEST_A,
+            NODE_TEST_B,
+            NODE_TEST_C,
+            NODE_TEST_D
+        )
     }
 }

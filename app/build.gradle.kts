@@ -13,8 +13,8 @@ android {
         applicationId = "net.mspanc.twinsenradio"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.2"
+        versionCode = 8
+        versionName = "0.2-gridtest1"
     }
 
     buildTypes {
