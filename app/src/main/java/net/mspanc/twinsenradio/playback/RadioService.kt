@@ -833,7 +833,11 @@ class RadioService : MediaLibraryService() {
 
     private fun browseNodeChildCount(parentId: String): Int = when {
         // Home = favourite stations + the single "All stations" entry.
-        parentId == NODE_ROOT -> repo.favourites().size + 1
+        parentId == NODE_ROOT -> 4
+        parentId == NODE_TEST_ALL -> repo.all().size
+        parentId == NODE_TEST_20 -> minOf(20, repo.all().size)
+        parentId == NODE_TEST_12 -> minOf(12, repo.all().size)
+        parentId == NODE_TEST_8 -> minOf(8, repo.all().size)
         parentId == NODE_FAVOURITES -> repo.favourites().size
         parentId == NODE_ALL -> repo.all().size
         parentId == NODE_RECENT -> repo.recent().size
@@ -1114,17 +1118,22 @@ class RadioService : MediaLibraryService() {
             )
 
             val children: List<MediaItem> = when {
-                // Android Auto home: favourite stations immediately, plus one
-                // secondary entry giving access to the complete station list.
-                parentId == NODE_ROOT ->
-                    repo.favourites().map(::browseItem) +
-                        browseNode(
-                            NODE_ALL,
-                            getString(net.mspanc.twinsenradio.R.string.node_all),
-                            MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS
-                        )
+                // Experimental Android Auto density test. Every folder uses
+                // the exact same station metadata and actions; only the number
+                // of stations changes so we can see when the A-Z index appears.
+                parentId == NODE_ROOT -> listOf(
+                    testCountNode(NODE_TEST_ALL, "A · toutes les stations"),
+                    testCountNode(NODE_TEST_20, "B · 20 stations"),
+                    testCountNode(NODE_TEST_12, "C · 12 stations"),
+                    testCountNode(NODE_TEST_8, "D · 8 stations")
+                )
 
-                // Kept for compatibility with an old cached Android Auto tree.
+                parentId == NODE_TEST_ALL -> repo.all().map(::browseItem)
+                parentId == NODE_TEST_20 -> repo.all().take(20).map(::browseItem)
+                parentId == NODE_TEST_12 -> repo.all().take(12).map(::browseItem)
+                parentId == NODE_TEST_8 -> repo.all().take(8).map(::browseItem)
+
+                // Kept for compatibility with old cached/system requests.
                 parentId == NODE_FAVOURITES -> repo.favourites().map(::browseItem)
                 parentId == NODE_ALL -> repo.all().map(::browseItem)
                 parentId == NODE_RECENT -> repo.recent().map(::browseItem)
@@ -1239,6 +1248,10 @@ class RadioService : MediaLibraryService() {
                     getString(net.mspanc.twinsenradio.R.string.node_all),
                     MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS
                 )
+                NODE_TEST_ALL -> testCountNode(NODE_TEST_ALL, "A · toutes les stations")
+                NODE_TEST_20 -> testCountNode(NODE_TEST_20, "B · 20 stations")
+                NODE_TEST_12 -> testCountNode(NODE_TEST_12, "C · 12 stations")
+                NODE_TEST_8 -> testCountNode(NODE_TEST_8, "D · 8 stations")
                 else -> null
             }
             if (node != null) {
@@ -1344,6 +1357,17 @@ class RadioService : MediaLibraryService() {
             )
             .build()
 
+    private fun testCountNode(id: String, title: String): MediaItem =
+        MediaItem.Builder()
+            .setMediaId(id)
+            .setMediaMetadata(
+                metadata.forFolder(
+                    title,
+                    MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS
+                )
+            )
+            .build()
+
     /**
      * Browsable node carrying its own grid/list toggle action. Android Auto
      * renders actions attached to a browse node in the secondary toolbar.
@@ -1370,7 +1394,11 @@ class RadioService : MediaLibraryService() {
             .build()
 
     private fun nodeUsesGrid(nodeId: String): Boolean =
-        if (nodeId == NODE_ALL) prefs.aaAllStationsGrid else prefs.aaFavouritesGrid
+        when (nodeId) {
+            NODE_TEST_ALL, NODE_TEST_20, NODE_TEST_12, NODE_TEST_8 -> true
+            NODE_ALL -> prefs.aaAllStationsGrid
+            else -> prefs.aaFavouritesGrid
+        }
 
     /**
      * A list item with a "favourite" action available directly from the context
@@ -1539,6 +1567,20 @@ class RadioService : MediaLibraryService() {
         const val NODE_GENRES = "/genres"
         const val NODE_GENRE_PREFIX = "/genre/"
 
-        private val BROWSE_NODES = listOf(NODE_FAVOURITES, NODE_ALL, NODE_RECENT, NODE_GENRES)
+        private const val NODE_TEST_ALL = "/gridcount/all"
+        private const val NODE_TEST_20 = "/gridcount/20"
+        private const val NODE_TEST_12 = "/gridcount/12"
+        private const val NODE_TEST_8 = "/gridcount/8"
+
+        private val BROWSE_NODES = listOf(
+            NODE_FAVOURITES,
+            NODE_ALL,
+            NODE_RECENT,
+            NODE_GENRES,
+            NODE_TEST_ALL,
+            NODE_TEST_20,
+            NODE_TEST_12,
+            NODE_TEST_8
+        )
     }
 }
