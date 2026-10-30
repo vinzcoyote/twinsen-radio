@@ -26,13 +26,15 @@ class MetadataFactory(private val context: Context, private val prefs: Prefs) {
 
     private val artworkBytesCache = HashMap<String, ByteArray?>()
 
-    /** Metadata for a browse-list item (Android Auto renders a tile from it). */
+    /**
+     * Metadata for a browse item.
+     *
+     * Android Auto already has the station artwork, so the grid intentionally
+     * carries no text. Playback metadata remains unchanged and still exposes
+     * station / artist / title information once an item is opened.
+     */
     fun forBrowseItem(station: Station): MediaMetadata =
         MediaMetadata.Builder()
-            .setTitle(station.name)
-            .setSubtitle(station.genre)
-            .setArtist(station.genre)
-            .setStation(station.name)
             .setIsBrowsable(false)
             .setIsPlayable(true)
             .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
