@@ -293,8 +293,18 @@ class RadioService : MediaLibraryService() {
             audioFormat = null
             icyBitrateKbps = 0
             PlaybackStatusBus.setQuality(null)
+            val previousId = PlaybackStatusBus.stationId.value
             val id = mediaItem?.mediaId?.let { Station.idFromMediaId(it) }
             PlaybackStatusBus.setStation(id)
+
+            // Android Auto can keep the last metadata it saw for a mediaId when we
+            // return to a station. Publish a clean "station only" snapshot
+            // immediately on a real station change; fresh ICY/DAB metadata will
+            // replace it as soon as it arrives.
+            if (id != null && id != previousId) {
+                refreshCurrentMetadata(force = true, now = null)
+            }
+
             id?.let {
                 prefs.pushRecent(it)
                 // Play count - the only sensible source for a "most listened"
